@@ -2,15 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="313b18e8-5f77-4b1e-ba83-7455558f011b" name="Default" comment="second push try">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/dictionaries/user.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/e-commerce-models.iml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/modules.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/vcs.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/Network_arcs.csv" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/P_C_matrix.csv" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/results.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/example_code.py" afterPath="$PROJECT_DIR$/example_code.py" />
     </list>
     <ignored path="e-commerce-models.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -34,8 +27,8 @@
       <file leaf-file-name="example_code.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/example_code.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="245">
-              <caret line="149" column="3" selection-start-line="149" selection-start-column="3" selection-end-line="149" selection-end-column="3" />
+            <state relative-caret-position="272">
+              <caret line="16" column="88" selection-start-line="16" selection-start-column="88" selection-end-line="16" selection-end-column="88" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
               </folding>
@@ -319,8 +312,8 @@
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/example_code.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="245">
-          <caret line="149" column="3" selection-start-line="149" selection-start-column="3" selection-end-line="149" selection-end-column="3" />
+        <state relative-caret-position="272">
+          <caret line="16" column="88" selection-start-line="16" selection-start-column="88" selection-end-line="16" selection-end-column="88" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>

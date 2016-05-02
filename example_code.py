@@ -137,7 +137,7 @@ read_file.close()
 ########################################################################################
 ########################################################################################
 #######  output file ###################################################################        
-with open('EX2.csv', 'w' ) as write_file:
+with open('EX2.csv', 'w' ) as write_file:e
     writer = csv.writer(write_file, lineterminator='\n')
     fieldnames2 = ["Proudct_ID" , "Customer_ID" ,"Customer_rank"]
     writer.writerow(fieldnames2)
