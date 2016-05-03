@@ -8,7 +8,7 @@ from sklearn.cross_validation import KFold
 # 2. run the model on the train set
 # 3. validate the model on the validation set
 def CrossValidation (Customr_product_rank):
-    kf = KFold(len(Customr_product_rank), 3, shuffle=False)
+    kf = KFold(len(Customr_product_rank), 3, shuffle=True)
     for train, test in kf:
         print 'Start run the model'
         Product_customer_train, Product_customer_test = [Customr_product_rank.keys()[i] for i in train], [Customr_product_rank.keys()[i] for i in test]
@@ -75,7 +75,7 @@ def KfoldDevision(dict, threshold):
 
 def main():
     # type: () -> object
-    Product_customer_rank ={}
+    Product_customer_rank = {}
     #{(P_i,C_j):rank , (P_m,C_n):rank , .....}
 
     Customr_product_rank = {}
