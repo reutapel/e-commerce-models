@@ -10,7 +10,7 @@ Customr_product_rank = {}
 
 customer_product_list = []
 #[(C_i,P_j), (C_m,P_n), .....]
-
+dfdf
 product_neighbors = {}
 #{product1:[product1_neighbor1 , product1_neighbor2, ...] , product2:[product2_neighbor1 , product2_neighbor2, ...], ... }
 
@@ -25,7 +25,7 @@ with open("P_C_matrix.csv","r") as csvfile:
         Customr_product_rank[(row['Customer_ID'],row['Product_ID'])] = int(row['Customer_rank'])
         customer_product_list.append((row['Customer_ID'],row['Product_ID']))
 csvfile.close()
-#######################################################################################
+########################################################git stat###############################
 #######################################################################################       
         
 ########################################################################################
