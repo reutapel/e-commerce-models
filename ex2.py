@@ -3,21 +3,21 @@ import math
 import random
 from sklearn.cross_validation import KFold
 
-#cross validation function:
+#cross validation function: reut
 # 1. split the training set to train and validation sets.
 # 2. run the model on the train set
 # 3. validate the model on the validation set
 def CrossValidation (Customr_product_rank):
     kf = KFold(len(Customr_product_rank), 3, shuffle=True)
     for train, test in kf:
-        print 'Start run the model'
+        print('Start run the model')
         Product_customer_train, Product_customer_test = [Customr_product_rank.keys()[i] for i in train], [Customr_product_rank.keys()[i] for i in test]
         Rank_train, Rank_test = [Customr_product_rank.itervalues()[i] for i in train], [Customr_product_rank.itervalues()[i] for i in test]
         R_avg_train = AvgDicValues(Rank_train)
         Bu, Bi = minimizeRMSE_model(Product_customer_train, Rank_train, R_avg_train)
         estimated_ranks = estimatedRanks(Product_customer_test, R_avg_train, Bu, Bi)
         RMSE = evaluatModel(Product_customer_test, Rank_test,estimated_ranks, test)
-        print 'The RMSE of the model on this test set is: {}'. format(RMSE)
+        print('The RMSE of the model on this test set is: {}'). format(RMSE)
 
 
 # Calculate for each customer and for each product the Bu and Bi
