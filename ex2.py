@@ -121,7 +121,7 @@ def graph_creation():
 
 
 #Create a dictionary: for each product and user = 1 if the user rank of the predecessors of the product, 0 otherwise
-def neighpors_indications(Products_Graph, Product_customer_train, Product_customer_test):
+def neighbors_indications(Products_Graph, Product_customer_train, Product_customer_test):
     Neighbors_indications_dictionary = {}
     for product, user in Product_customer_test:
         for neighbor in Products_Graph.predecessors(str(product)):
