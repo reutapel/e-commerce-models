@@ -41,7 +41,7 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
 
 
 # Create output file
-def Create_estimaedR_file(estimated_ranks, model_name,Product_customer_rank_test,i):
+def Create_estimatedR_file(estimated_ranks, model_name,Product_customer_rank_test,i):
     np.savetxt(model_name+"_"+i+"_estimatedRanks.csv", estimated_ranks, delimiter=",")
     np.savetxt(model_name + "_" + i + "_realRanks.csv", Product_customer_rank_test, delimiter=",")
 
@@ -58,7 +58,7 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_test, u
         return R_avg_train, Bu, Bi
 
 
-#the following takes the relevant training observations that appears in test
+#the following returns only the relevant training observations that appears in test
 def relTrain(np_test_list, np_train_list):
     TestProducts = np_test_list[:,0]
     TestProducts = list(set(TestProducts))
@@ -70,7 +70,24 @@ def relTrain(np_test_list, np_train_list):
     maskC = np.in1d(np_train_list[:, 1], TestCustomers)
     mask = np.logical_or(maskP, maskC)
     rel_np_train_list = np_train_list[mask]
-    return rel_np_train_list, TestProductsLen, TestCustomersLen
+    return rel_np_train_list, TestCustomers
+
+# returns two dictionaries one for products from test and other for customers from test, where values are Bp and Bc
+def B_pc(rel_np_train_list, TestCustomers, rAvg):
+    B_Customers = coll.defaultdict(lambda: [0] * 2)
+    B_Products = coll.defaultdict(lambda: [0] * 2)
+    for obs in rel_np_train_list:
+        if obs[1] in TestCustomers:
+            B_Customers[obs[1]][0] += 1
+            B_Customers[obs[1]][1] += obs[2]
+        else:
+            B_Products[obs[0]][0] += 1
+            B_Products[obs[0]][1] += obs[2]
+    for key in B_Products.keys():
+        B_Products[key][1] = B_Products[key][1]/B_Products[key][0]-rAvg
+    for key in B_Customers.keys():
+        B_Customers[key][1] = B_Customers[key][1]/B_Customers[key][0]-rAvg
+    return B_Products, B_Customers
 
 
 #returns two dictionaries of index in matrix for products and for customers, with the matrix itself initialized with zeros.
