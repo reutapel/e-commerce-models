@@ -48,9 +48,7 @@ def Create_estimatedR_file(estimated_ranks, model_name,Product_customer_rank_tes
                header='Product_ID,Customer_ID,Customer_estimated_rank', comments='')
     np.savetxt(model_name + "_" + i + "_realRanks.csv", Product_customer_rank_test, fmt='%s, %s, %s', delimiter=",",
                header='Product_ID,Customer_ID,Customer_real_rank', comments='')
-
-
-def Create_regression_file(Rank_train, R_avg, Bu, Bi, )
+    
 
 # The base model which calculate r as: R_avg + Bu+ Bi
 # Return a dictionary- for each (i,u) the value is the estimated rank
