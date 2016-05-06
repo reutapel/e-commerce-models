@@ -100,7 +100,7 @@ def buildIndexesForMatrix(np_PCR_list):
 def graph_model(Product_customer_train, Rank_train, Product_customer_test):
     R_avg_train, Bu, Bi = base_model(Product_customer_train, Rank_train, Product_customer_rank_test, False)
     Products_Graph = graph_creation()
-    Neighbors_indications_dictionary = neighpors_indications(Products_Graph , Product_customer_train)
+    Neighbors_indications_dictionary = neighbors_indications(Products_Graph , Product_customer_train)
     estimated_ranks = estimatedRanks(Product_customer_test, R_avg_train, Bu, Bi,Neighbors_indications_dictionary, a, b, c, d)
     return estimated_ranks
 
@@ -121,7 +121,7 @@ def graph_creation():
 
 
 #Create a dictionary: for each product and user = 1 if the user rank of the predecessors of the product, 0 otherwise
-def neighpors_indications(Products_Graph, Product_customer_train, Product_customer_test):
+def neighbors_indications(Products_Graph, Product_customer_train, Product_customer_test):
     Neighbors_indications_dictionary = {}
     for product, user in Product_customer_test:
         for neighbor in Products_Graph.predecessors(str(product)):
