@@ -7,6 +7,7 @@ from numpy import distutils
 import networkx as nx
 from random import shuffle
 
+
 #cross validation function: reut
 # 1. split the training set to train and validation sets.
 # 2. run the model on the train set
@@ -57,12 +58,49 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_test, u
         return R_avg_train, Bu, Bi
 
 
+#the following takes the relevant training observations that appears in test
+def relTrain(np_test_list, np_train_list):
+    TestProducts = np_test_list[:,0]
+    TestProducts = list(set(TestProducts))
+    TestProductsLen = len(TestProducts)
+    TestCustomers = np_test_list[:,1]
+    TestCustomers = list(set(TestCustomers))
+    TestCustomersLen = len(TestCustomers)
+    maskP = np.in1d(np_train_list[:, 0], TestProducts)
+    maskC = np.in1d(np_train_list[:, 1], TestCustomers)
+    mask = np.logical_or(maskP, maskC)
+    rel_np_train_list = np_train_list[mask]
+    return rel_np_train_list, TestProductsLen, TestCustomersLen
+
+
+#returns two dictionaries of index in matrix for products and for customers, with the matrix itself initialized with zeros.
+def buildIndexesForMatrix(np_PCR_list):
+    Products = np_PCR_list[:, 0]
+    Products = list(set(Products))
+    ProductsLen = len(Products)
+    Customers = np_PCR_list[:, 1]
+    Customers = list(set(Customers))
+    CustomersLen = len(Customers)
+    CustomerMatrixIndex = {}
+    ProductMatrixIndex = {}
+    index = 0
+    for product in Products:
+        ProductMatrixIndex[product] = index
+        index += 1
+    index = 0
+    for customer in Customers:
+        CustomerMatrixIndex[customer] = index
+        index += 1
+    matrix = np.zeros(shape=(ProductsLen, CustomersLen))
+    return ProductMatrixIndex, CustomerMatrixIndex, matrix
+
+
 # The model calculate r as: a*R_avg + b*Bu+ c*Bi + d*(1 if one of the neighbors has a rank with the user, 0 otherwise)
 # Return a dictionary- for each (i,u) the value is the estimated rank
 def graph_model(Product_customer_train, Rank_train, Product_customer_test):
     R_avg_train, Bu, Bi = base_model(Product_customer_train, Rank_train, Product_customer_rank_test, False)
     Products_Graph = graph_creation()
-    Neighbors_indications_dictionary = neighpors_indications(Products_Graph , Product_customer_train)
+    Neighbors_indications_dictionary = neighbors_indications(Products_Graph , Product_customer_train)
     estimated_ranks = estimatedRanks(Product_customer_test, R_avg_train, Bu, Bi,Neighbors_indications_dictionary, a, b, c, d)
     return estimated_ranks
 
@@ -83,7 +121,7 @@ def graph_creation():
 
 
 #Create a dictionary: for each product and user = 1 if the user rank of the predecessors of the product, 0 otherwise
-def neighpors_indications(Products_Graph, Product_customer_train, Product_customer_test):
+def neighbors_indications(Products_Graph, Product_customer_train, Product_customer_test):
     Neighbors_indications_dictionary = {}
     for product, user in Product_customer_test:
         for neighbor in Products_Graph.predecessors(str(product)):
@@ -95,6 +133,7 @@ def neighpors_indications(Products_Graph, Product_customer_train, Product_custom
 
 # Calculate for each customer and for each product the Bu and Bi
 def minimizeRMSE_model (Product_customer , Ranks, R_avg):
+
     return
 
 
@@ -119,14 +158,16 @@ def evaluateModel(Product_customer_rank_test, estimated_ranks, validation):
 # returns two lists: of the customers and of the products which appear in the result file,
 # -> meaning we need to estimate their ranking
 def RelCusPro():
-    relevant_customers = []
-    relevant_products = []
+    relevant_products_customers = []
     with open("results.csv","r") as csvfile:
      reader = csv.DictReader(csvfile)
      for row in reader:
-            relevant_products.append(row['Product_ID'])
-            relevant_customers.append(row['Customer_ID'])
+            relevant_products_customers.append([row['Product_ID'], row['Customer_ID'], 0])
     csvfile.close()
+    # relevant_products_customers = list(set(relevant_products))
+    return relevant_products_customers
+
+
     relevant_products = list(set(relevant_products))
     relevant_customers = list(set(relevant_customers))
     return relevant_products, relevant_customers
@@ -183,7 +224,7 @@ def main():
 #######  output file ###################################################################
     with open('EX2.csv', 'w' ) as write_file:
         writer = csv.writer(write_file, lineterminator='\n')
-        fieldnames2 = ["Proudct_ID" , "Customer_ID" ,"Customer_rank"]
+        fieldnames2 = ["Product_ID" , "Customer_ID" ,"Customer_rank"]
         writer.writerow(fieldnames2)
         for result in results_list:
             writer.writerow([  result[0] , result[1] , int(result[2])  ])
