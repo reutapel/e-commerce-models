@@ -45,6 +45,43 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_te
         return R_avg_train, Bu, Bi
 
 
+#the following takes the relevant training observations that appears in test
+def relTrain(np_test_list, np_train_list):
+    TestProducts = np_test_list[:,0]
+    TestProducts = list(set(TestProducts))
+    TestProductsLen = len(TestProducts)
+    TestCustomers = np_test_list[:,1]
+    TestCustomers = list(set(TestCustomers))
+    TestCustomersLen = len(TestCustomers)
+    maskP = np.in1d(np_train_list[:, 0], TestProducts)
+    maskC = np.in1d(np_train_list[:, 1], TestCustomers)
+    mask = np.logical_or(maskP, maskC)
+    rel_np_train_list = np_train_list[mask]
+    return rel_np_train_list, TestProductsLen, TestCustomersLen
+
+
+#returns two dictionaries of index in matrix for products and for customers, with the matrix itself initialized with zeros.
+def buildIndexesForMatrix(np_PCR_list):
+    Products = np_PCR_list[:, 0]
+    Products = list(set(Products))
+    ProductsLen = len(Products)
+    Customers = np_PCR_list[:, 1]
+    Customers = list(set(Customers))
+    CustomersLen = len(Customers)
+    CustomerMatrixIndex = {}
+    ProductMatrixIndex = {}
+    index = 0
+    for product in Products:
+        ProductMatrixIndex[product] = index
+        index += 1
+    index = 0
+    for customer in Customers:
+        CustomerMatrixIndex[customer] = index
+        index += 1
+    matrix = np.zeros(shape=(ProductsLen, CustomersLen))
+    return ProductMatrixIndex, CustomerMatrixIndex, matrix
+
+
 # The model calculate r as: a*R_avg + b*Bu+ c*Bi + d*(1 if one of the neighbors has a rank with the user, 0 otherwise)
 # Return a dictionary- for each (i,u) the value is the estimated rank
 def graph_model(Product_customer_train, Rank_train, Product_customer_rank_test):

@@ -21,31 +21,46 @@ def main():
     # #{product1:[product1_neighbor1 , product1_neighbor2, ...] , product2:[product2_neighbor1 , product2_neighbor2, ...], ... }
 
     test_list = [[12,34,0],[1,23,0],[1,34,0],[22,22,0]]
-    train_list = [[12,12,6],[1,42,4],[1,7,5],[22,4,9],[22,43,6],[13,42,5]]
+    PCR_list = [[100,22,6],[6,42,4],[1,7,5],[22,4,9],[22,34,6],[13,62,5]]
     np_test_list = np.array(test_list)
     print(np_test_list)
-    np_train_list = np.array(train_list)
-    print(np_train_list)
+    np_PCR_list = np.array(PCR_list)
+    print(np_PCR_list)
 
-def minB(test_list, train_list):
-    VectorBindex = {}
-    TestProducts = np.array(test_list)[:,0]
-    TestProducts = set(TestProducts)
+#the following takes the relevant training observations that appears in test
+def relTrain(np_test_list, np_train_list):
+    TestProducts = np_test_list[:,0]
+    TestProducts = list(set(TestProducts))
     TestProductsLen = len(TestProducts)
-    TestCustomers = np.array(train_list)[:,1]
-    TestCustomers = set(TestCustomers)
+    TestCustomers = np_test_list[:,1]
+    TestCustomers = list(set(TestCustomers))
     TestCustomersLen = len(TestCustomers)
-    for obs in train_list:
-        if (obs[0] in TestProducts) or (obs[1] in TestCustomers):
-            continue
-        else:
+    maskP = np.in1d(np_train_list[:, 0], TestProducts)
+    maskC = np.in1d(np_train_list[:, 1], TestCustomers)
+    mask = np.logical_or(maskP, maskC)
+    rel_np_train_list = np_train_list[mask]
+    return rel_np_train_list, TestProductsLen, TestCustomersLen
 
-
-
-
-
-
-
+#returns two dictionaries of index in matrix for products and for customers, with the matrix itself initialized with zeros.
+def buildIndexesForMatrix(np_PCR_list):
+    Products = np_PCR_list[:, 0]
+    Products = list(set(Products))
+    ProductsLen = len(Products)
+    Customers = np_PCR_list[:, 1]
+    Customers = list(set(Customers))
+    CustomersLen = len(Customers)
+    CustomerMatrixIndex = {}
+    ProductMatrixIndex = {}
+    index = 0
+    for product in Products:
+        ProductMatrixIndex[product] = index
+        index += 1
+    index = 0
+    for customer in Customers:
+        CustomerMatrixIndex[customer] = index
+        index += 1
+    matrix = np.zeros(shape=(ProductsLen, CustomersLen))
+    return ProductMatrixIndex, CustomerMatrixIndex, matrix
 
 
 
