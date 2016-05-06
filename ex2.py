@@ -17,6 +17,8 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
     random.shuffle(indexes)
 
     slices = [indexes[i::k] for i in xrange(k)]
+    if k == 1:
+        flag = True
 
     sum_of_RMSE = 0
     for i in xrange(k):
@@ -30,11 +32,11 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
             np.array([Product_customer_rank_matrix[j,:] for j in training]), \
             np.array([Product_customer_rank_matrix[l,:] for l in validation])
         Rank_train, Rank_test = Product_customer_rank_train[:,2], Product_customer_rank_test[:,2]
-        estimated_ranks = model_name(Product_customer_rank_train, Rank_train)
+        estimated_ranks = model_name(Product_customer_rank_train, Rank_train, Product_customer_rank_test, flag)
         rTilda = np.subtract(Product_customer_rank_test[:,2], estimated_ranks[:,2])
         RMSE = evaluateModel(Product_customer_rank_test, estimated_ranks, validation)
         print('The RMSE of the model {} for iteration {} is: {}'). format(model_name, i, RMSE)
-        Create_estimaedR_file(estimated_ranks, model_name, Product_customer_rank_test)
+        Create_estimatedR_file(estimated_ranks, model_name, Product_customer_rank_test)
         sum_of_RMSE += RMSE
 
     print('The average RMSE of the model {} using cross-validation with {} folds is: {}').format(model_name, k, sum_of_RMSE/k)
@@ -42,23 +44,42 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
 
 # Create output file
 def Create_estimatedR_file(estimated_ranks, model_name,Product_customer_rank_test,i):
-    np.savetxt(model_name+"_"+i+"_estimatedRanks.csv", estimated_ranks, delimiter=",")
-    np.savetxt(model_name + "_" + i + "_realRanks.csv", Product_customer_rank_test, delimiter=",")
-
+    np.savetxt(model_name+"_"+i+"_estimatedRanks.csv", estimated_ranks, fmt='%s, %s, %s', delimiter=",",
+               header='Product_ID,Customer_ID,Customer_estimated_rank', comments='')
+    np.savetxt(model_name + "_" + i + "_realRanks.csv", Product_customer_rank_test, fmt='%s, %s, %s', delimiter=",",
+               header='Product_ID,Customer_ID,Customer_real_rank', comments='')
+    
 
 # The base model which calculate r as: R_avg + Bu+ Bi
 # Return a dictionary- for each (i,u) the value is the estimated rank
-def base_model(Product_customer_rank_train, Rank_train, Product_customer_test, use_base_model = True):
+def base_model(Product_customer_rank_train, Rank_train, Product_customer_test, use_base_model = True, flag = False):
     R_avg_train = np.mean(Rank_train)
     Bu, Bi = minimizeRMSE_model(Product_customer_rank_train, Rank_train, R_avg_train)
     if use_base_model:
-        estimated_ranks = estimatedRanks(Product_customer_test, R_avg_train, Bu, Bi)
+        estimated_ranks, estimated_parameters = estimatedRanks(Product_customer_test, R_avg_train, Rank_train, Bu, Bi)
+        if flag:
+            np.savetxt(model_name + "for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
+                       header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
         return estimated_ranks
     else:
         return R_avg_train, Bu, Bi
 
 
 #the following returns only the relevant training observations that appears in test
+# The model calculate r as: a*R_avg + b*Bu+ c*Bi + d*(1 if one of the neighbors has a rank with the user, 0 otherwise)
+# Return a dictionary- for each (i,u) the value is the estimated rank
+def graph_model(Product_customer_train, Rank_train, Product_customer_test, flag = False):
+    R_avg_train, Bu, Bi = base_model(Product_customer_train, Rank_train, Product_customer_rank_test, False)
+    Products_Graph = graph_creation()
+    Neighbors_indications_dictionary = neighbors_indications(Products_Graph , Product_customer_train)
+    estimated_ranks = estimatedRanks(Product_customer_test, R_avg_train, Bu, Bi,Neighbors_indications_dictionary, a, b, c, d)
+    if flag:
+        np.savetxt(model_name + "for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
+                   header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
+    return estimated_ranks
+
+
+#the following takes the relevant training observations that appears in test
 def relTrain(np_test_list, np_train_list):
     TestProducts = np_test_list[:,0]
     TestProducts = list(set(TestProducts))
@@ -112,16 +133,6 @@ def buildIndexesForMatrix(np_PCR_list):
     return ProductMatrixIndex, CustomerMatrixIndex, matrix
 
 
-# The model calculate r as: a*R_avg + b*Bu+ c*Bi + d*(1 if one of the neighbors has a rank with the user, 0 otherwise)
-# Return a dictionary- for each (i,u) the value is the estimated rank
-def graph_model(Product_customer_train, Rank_train, Product_customer_test):
-    R_avg_train, Bu, Bi = base_model(Product_customer_train, Rank_train, Product_customer_rank_test, False)
-    Products_Graph = graph_creation()
-    Neighbors_indications_dictionary = neighbors_indications(Products_Graph , Product_customer_train)
-    estimated_ranks = estimatedRanks(Product_customer_test, R_avg_train, Bu, Bi,Neighbors_indications_dictionary, a, b, c, d)
-    return estimated_ranks
-
-
 # Create an undirected graph of product1-product2
 def graph_creation():
     with open('Network_arcs.csv', 'r') as csvfile:
@@ -150,7 +161,6 @@ def neighbors_indications(Products_Graph, Product_customer_train, Product_custom
 
 # Calculate for each customer and for each product the Bu and Bi
 def minimizeRMSE_model (Product_customer , Ranks, R_avg):
-
     return
 
 
@@ -158,90 +168,84 @@ def minimizeRMSE_model (Product_customer , Ranks, R_avg):
 # Return a numpy array- [product, user, the estimated rank]
 def estimatedRanks(Product_customer_test, R_avg, Bu, Bi, Neighbors_indications_dictionary, a=1, b=1, c=1, d=1):
     estimated_ranks = []
-    for product, user in Product_customer_test:
+    estimated_parameters = []
+    for product, user, rank in Product_customer_test:
         if (product, user) in Neighbors_indications_dictionary.keys():
             #Neighbors_indications_dictionary[(product, user)] = 1 if there is such a key
             estimated_ranks.append([product, user, a*R_avg + b*Bu[user] + c*Bi[product] + d])
+            estimated_parameters.append([product, user, rank, R_avg, Bu[user], Bi[product], 1])
         else:
-            estimated_ranks.append([product, user,a*R_avg + b*Bu[user] + c*Bi[product]])
-    return np.array(estimated_ranks)
+            estimated_ranks.append([product, user, a*R_avg + b*Bu[user] + c*Bi[product]])
+            estimated_parameters.append([product, user, rank, R_avg, Bu[user], Bi[product], 0])
+    return np.array(estimated_ranks), np.array(estimated_parameters)
 
 
 # Evaluate the model: calculate the RMSE for the validation set
 def evaluateModel(Product_customer_rank_test, estimated_ranks, validation):
-    return np.sum(np.power(np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:,2])),2)
+    return np.sum(np.power(np.subtract(estimated_ranks[:, 2], Product_customer_rank_test[:, 2])), 2)
 
 
 # returns two lists: of the customers and of the products which appear in the result file,
 # -> meaning we need to estimate their ranking
-def RelCusPro():
-    relevant_products_customers = []
-    with open("results.csv","r") as csvfile:
-     reader = csv.DictReader(csvfile)
-     for row in reader:
-            relevant_products_customers.append([row['Product_ID'], row['Customer_ID'], 0])
-    csvfile.close()
-    # relevant_products_customers = list(set(relevant_products))
-    return relevant_products_customers
+# def RelCusPro():
+#     relevant_products_customers = []
+#     with open("results.csv","r") as csvfile:
+#      reader = csv.DictReader(csvfile)
+#      for row in reader:
+#             relevant_products_customers.append([row['Product_ID'], row['Customer_ID'], 0])
+#     csvfile.close()
+#     # relevant_products_customers = list(set(relevant_products))
+#     relevant_products = list(set(relevant_products))
+#     relevant_customers = list(set(relevant_customers))
+#     return relevant_products, relevant_customers
 
 
 def main():
-########################################################################################
-########################################################################################
-################### read P_C_matrix into numPy matrix ####################################
+################### read P_C_matrix into numPy matrix ##################################
     with open('P_C_matrix.csv', 'r') as csvfile:
-        matrix = list(csv.reader(csvfile))
+        input_matrix = list(csv.reader(csvfile))
         i = 0
         for products in matrix:  # delete the header of the file
             if products[0] == 'Product_ID':
                 del matrix[i]
                 break
             i += 1
-        Product_customer_rank_matrix = np.array(matrix).astype('int')
+        Product_customer_rank_matrix = np.array(input_matrix).astype('int')
     csvfile.close()
 #######################################################################################
-########################     Cross Validation Part    #################################
 
+########################     Cross Validation Part    #################################
     for model_name in (graph_model, base_model):
         CrossValidation(Product_customer_rank_matrix, model_name, 3)
+#######################################################################################
 
-########################################################################################
-########################################################################################
-############################       results        ######################################
-    results_list = []
+#############    check the coefficient using multiple regression   ####################
+    CrossValidation(Product_customer_rank_matrix, graph_model, 1)
+#######################################################################################
+
+###################    call the results file as numpy array   #########################
     with open('results.csv', 'r') as csvfile:
-        matrix = list(csv.reader(csvfile))
+        input_matrix = list(csv.reader(csvfile))
         i = 0
         for products in matrix:  # delete the header of the file
             if products[0] == 'Product_ID':
                 del matrix[i]
                 break
             i += 1
-        Product_customer_results_matrix = np.array(matrix).astype('int')
+        Product_customer_results_matrix = np.array(input_matrix).astype('int')
     csvfile.close()
-
-    results_matrix = base_model(Product_customer_rank_matrix, Product_customer_rank_matrix[:,2], Product_customer_results_matrix)
-    # remember : field_names = ['Product_ID', 'Customer_ID','Customer_rank' ]
-    with open("results.csv","r") as read_file:
-        reader3 = csv.DictReader(read_file)
-        for row in reader3:
-            if row['Product_ID'] in product_last_rank:
-                results_list.append( (row['Product_ID'] ,row['Customer_ID'] , product_last_rank[( row['Product_ID'] )]  )  )
-            else:
-                results_list.append( (row['Product_ID'] ,row['Customer_ID'] , 5  )  )
-    read_file.close()
-
 ########################################################################################
-########################################################################################
-#######  output file ###################################################################
-    with open('EX2.csv', 'w' ) as write_file:
-        writer = csv.writer(write_file, lineterminator='\n')
-        fieldnames2 = ["Product_ID" , "Customer_ID" ,"Customer_rank"]
-        writer.writerow(fieldnames2)
-        for result in results_list:
-            writer.writerow([  result[0] , result[1] , int(result[2])  ])
-    write_file.close
+
+#######  run the model #################################################################
+    model_name = base_model #choose the model
+    results_matrix = model_name(Product_customer_rank_matrix,
+                                Product_customer_rank_matrix[:,2],
+                                Product_customer_results_matrix)
 #######################################################################################
+
+#######  output file ###################################################################
+    numpy.savetxt("EX2.csv", results_matrix, fmt='%s, %s, %s', delimiter=",",
+                  header='Product_ID,Customer_ID,Customer_rank', comments='')
 #######################################################################################
 
 if __name__ == '__main__':
