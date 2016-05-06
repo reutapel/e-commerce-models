@@ -93,7 +93,9 @@ def relTrain(np_test_list, np_train_list):
     rel_np_train_list = np_train_list[mask]
     return rel_np_train_list, TestCustomers
 
-# returns two dictionaries one for products from test and other for customers from test, where values are Bp and Bc
+
+# returns two dictionaries one for products from test and other for customers from test, where values are list that
+# in the second index of the list there is a FLOAT Bp and Bc 
 def B_pc(rel_np_train_list, TestCustomers, rAvg):
     B_Customers = coll.defaultdict(lambda: [0] * 2)
     B_Products = coll.defaultdict(lambda: [0] * 2)
