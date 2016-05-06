@@ -1,23 +1,71 @@
 import csv
 import math
 import random
+import numpy
+from numpy import distutils
 from sklearn.cross_validation import KFold
+import networkx as nx
 
 #cross validation function: reut
 # 1. split the training set to train and validation sets.
 # 2. run the model on the train set
 # 3. validate the model on the validation set
-def CrossValidation (Customr_product_rank):
+def CrossValidation (Product_customer_rank, model_name):
     kf = KFold(len(Customr_product_rank), 3, shuffle=True)
     for train, test in kf:
         print('Start run the model')
-        Product_customer_train, Product_customer_test = [Customr_product_rank.keys()[i] for i in train], [Customr_product_rank.keys()[i] for i in test]
+        Product_customer_train, Product_customer_test = [Product_customer_rank.keys()[i] for i in train], [Product_customer_rank.keys()[i] for i in test]
         Rank_train, Rank_test = [Customr_product_rank.itervalues()[i] for i in train], [Customr_product_rank.itervalues()[i] for i in test]
-        R_avg_train = AvgDicValues(Rank_train)
-        Bu, Bi = minimizeRMSE_model(Product_customer_train, Rank_train, R_avg_train)
-        estimated_ranks = estimatedRanks(Product_customer_test, R_avg_train, Bu, Bi)
+        estimated_ranks = model_name(Product_customer_train, Rank_train)
         RMSE = evaluatModel(Product_customer_test, Rank_test,estimated_ranks, test)
         print('The RMSE of the model on this test set is: {}'). format(RMSE)
+
+
+# The base model which calculate r as: R_avg + Bu+ Bi
+# Return a dictionary- for each (i,u) the value is the estimated rank
+def base_model(Product_customer_train, Rank_train, Product_customer_test):
+    R_avg_train = AvgDicValues(Rank_train)
+    Bu, Bi = minimizeRMSE_model(Product_customer_train, Rank_train, R_avg_train)
+    estimated_ranks = estimatedRanks(Product_customer_test, R_avg_train, Bu, Bi)
+    return estimated_ranks
+
+
+# The model calculate r as: a*R_avg + b*Bu+ c*Bi + d*(1 if one of the neighbors has a rank with the user, 0 otherwise)
+# Return a dictionary- for each (i,u) the value is the estimated rank
+def graph_model(Product_customer_train, Rank_train, Product_customer_test):
+    R_avg_train = AvgDicValues(Rank_train)
+    Bu, Bi = minimizeRMSE_model(Product_customer_train, Rank_train, R_avg_train)
+    Products_Graph = graph_creation()
+    Neighbors_indications_dictionary = neighpors_indications(Products_Graph , Product_customer_train)
+    estimated_ranks = estimatedRanks(Product_customer_test, R_avg_train, Bu, Bi,Neighbors_indications_dictionary, a, b, c, d)
+    return estimated_ranks
+
+
+# Create an undirected graph of product1-product2
+def graph_creation():
+    with open('Network_arcs.csv', 'r') as csvfile:
+        edges = list(csv.reader(csvfile))
+        i = 0
+        for products in edges:  # delete the header of the file
+            if products[0] == 'Product1_ID':
+                del edges[i]
+                break
+            i += 1
+        Products_Graph = nx.DiGraph(edges)
+    csvfile.close()
+    return Products_Graph
+
+
+
+#Create a dictionary: for each product and user = 1 if the user rank of the predecessors of the product, 0 otherwise
+def neighpors_indications(Products_Graph, Product_customer):
+    Neighbors_indications_dictionary = {}
+    for product, user in Product_customer:
+        for neighbor in Products_Graph.predecessors(str(product)):
+            if (int(neighbor), user) in Product_customer:
+                Neighbors_indications_dictionary[(product, user)] = 1
+                break #one neighbor which the user has ranked it is enough- no need to check all the neighbors
+    return  Neighbors_indications_dictionary
 
 
 # Calculate for each customer and for each product the Bu and Bi
@@ -25,14 +73,21 @@ def minimizeRMSE_model (Product_customer , Ranks, R_avg):
     return
 
 
-# Calculate for each Product_customer couple the estimated value for the rank
-def estimatedRanks (Product_customer_test, R_avg, Bu, Bi):
-    return
+# Calculate for each Product_customer couple the estimated value for the rank.
+# Return a list- for each (i,u) the value is the estimated rank
+def estimatedRanks (Product_customer_test, R_avg, Bu, Bi, Neighbors_indications_dictionary, a=1, b=1, c=1, d=1):
+    estimated_ranks = []
+    for i,u in Product_customer_test.keys():
+        if (i,u) in Neighbors_indications_dictionary.keys():
+            estimated_ranks.append(a*R_avg + b*Bu[u] + c*Bi[i] + d*Neighbors_indications_dictionary[(i,u)])
+        else:
+            estimated_ranks.append(a * R_avg + b * Bu[u] + c * Bi[i])
+    return estimated_ranks
 
 
 # Evaluate the model: calculate the RMSE for the test set
-def evaluateModel (Product_customer_test , Ranks_test, estimated_ranks):
-    return sum(pow((estimated_ranks[i] - Ranks_test[i] for i in test),2)) #check if that works
+def evaluateModel (Ranks_test, estimated_ranks, test):
+    return sum(pow((estimated_ranks[i] - Ranks_test[i]), 2) for i in test)
 
 
 # average of dictionary values- for calculating the average rank
