@@ -1,7 +1,7 @@
 import csv
 import math
 import random
-from sklearn.cross_validation import KFold
+
 
 #cross validation function: reut
 # 1. split the training set to train and validation sets.
@@ -22,6 +22,7 @@ def CrossValidation (Customr_product_rank):
 
 # Calculate for each customer and for each product the Bu and Bi
 def minimizeRMSE_model (Product_customer , Ranks, R_avg):
+
     return
 
 
@@ -47,17 +48,14 @@ def AvgDicValues(dic):
 # returns two lists: of the customers and of the products which appear in the result file,
 # -> meaning we need to estimate their ranking
 def RelCusPro():
-    relevant_customers = []
-    relevant_products = []
+    relevant_products_customers = []
     with open("results.csv","r") as csvfile:
      reader = csv.DictReader(csvfile)
      for row in reader:
-            relevant_products.append(row['Product_ID'])
-            relevant_customers.append(row['Customer_ID'])
+            relevant_products_customers.append([row['Product_ID'], row['Customer_ID'], 0])
     csvfile.close()
-    relevant_products = list(set(relevant_products))
-    relevant_customers = list(set(relevant_customers))
-    return relevant_products, relevant_customers
+    # relevant_products_customers = list(set(relevant_products))
+    return relevant_products_customers
 
 
 # random.random() returns float between 0.0 to 1.0
@@ -156,7 +154,7 @@ def main():
 #######  output file ###################################################################
     with open('EX2.csv', 'w' ) as write_file:
         writer = csv.writer(write_file, lineterminator='\n')
-        fieldnames2 = ["Proudct_ID" , "Customer_ID" ,"Customer_rank"]
+        fieldnames2 = ["Product_ID" , "Customer_ID" ,"Customer_rank"]
         writer.writerow(fieldnames2)
         for result in results_list:
             writer.writerow([  result[0] , result[1] , int(result[2])  ])
