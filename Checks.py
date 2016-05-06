@@ -35,9 +35,11 @@ def minB(test_list, train_list):
     TestCustomers = np.array(train_list)[:,1]
     TestCustomers = set(TestCustomers)
     TestCustomersLen = len(TestCustomers)
-    for obs in test_list:
-        for key in VectorBindex.keys():
-            if key == obs[0]:
+    for obs in train_list:
+        if (obs[0] in TestProducts) or (obs[1] in TestCustomers):
+            continue
+        else:
+
 
 
 
