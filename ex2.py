@@ -77,13 +77,12 @@ def calcFinalRank(estimated_ranks):
     OldMin = np.nanmin(estimated_ranks)
     OldMax = np.nanmax(estimated_ranks)
     OldRange = (OldMax - OldMin)
+    if OldRange == 0:
+        OldRange = 1
     i = 0
     for obs in estimated_ranks:
         OldRank = obs
-        if OldRange == 0:
-            NewRank = ((OldRank - OldMin) * 5)
-        else:
-            NewRank = (((OldRank - OldMin) * 5) / OldRange) #change - if the old range is 0 --> it doesnt good!
+        NewRank = (((OldRank - OldMin) * 5) / OldRange) #change - if the old range is 0 --> it doesnt good!
         Final = int(round(NewRank))
         estimated_ranks[i] = Final
         i += 1
@@ -308,7 +307,7 @@ def evaluateModel(Product_customer_rank_test, estimated_ranks):
     return np.sum(np.power(np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:, 2]), 2))
 
 def main():
-    logging.basicConfig(filename='logfile.log', level=logging.DEBUG)
+    logging.basicConfig(filename='logfilecrossten.log', level=logging.DEBUG)
 ################### read P_C_matrix into numPy matrix ##################################
     with open('P_C_matrix.csv', 'r') as csvfile:
         input_matrix = list(csv.reader(csvfile))
@@ -323,12 +322,12 @@ def main():
 #######################################################################################
 
 ########################     Cross Validation Part    #################################
-    # for model_name in (graph_model, base_model):
-    #     CrossValidation(Product_customer_rank_matrix, model_name, 10)
+    for model_name in (graph_model, base_model):
+        CrossValidation(Product_customer_rank_matrix, model_name, 10)
 #######################################################################################
 
 #############    check the coefficient using multiple regression   ####################
-    CrossValidation(Product_customer_rank_matrix, graph_model, 1)
+    # CrossValidation(Product_customer_rank_matrix, graph_model, 1)
 #######################################################################################
 
 ###################    call the results file as numpy array   #########################
