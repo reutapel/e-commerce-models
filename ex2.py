@@ -6,7 +6,7 @@ from numpy import distutils
 # from sklearn.cross_validation import KFold
 import networkx as nx
 from random import shuffle
-
+import collections as coll
 
 #cross validation function: reut
 # 1. split the training set to train and validation sets.
@@ -95,7 +95,7 @@ def relTrain(np_test_list, np_train_list):
 
 
 # returns two dictionaries one for products from test and other for customers from test, where values are list that
-# in the second index of the list there is a FLOAT Bp and Bc 
+# in the second index of the list there is a FLOAT Bp and Bc
 def B_pc(rel_np_train_list, TestCustomers, rAvg):
     B_Customers = coll.defaultdict(lambda: [0] * 2)
     B_Products = coll.defaultdict(lambda: [0] * 2)
