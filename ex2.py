@@ -92,6 +92,7 @@ def graph_model(Product_customer_train, Rank_train, Product_customer_test, flag 
 
 # The following takes the relevant training observations that appears in test
 def relTrain(np_test_list, np_train_list):
+    print('{}: Start run relTrain').format(time.asctime(time.localtime(time.time())))
     TestProducts = np_test_list[:,0]
     TestProducts = list(set(TestProducts))
     TestProductsLen = len(TestProducts)
