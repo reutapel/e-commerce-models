@@ -264,11 +264,18 @@ def neighbors_indications(Products_Graph_dic, Product_customer_train, Product_cu
 
     # i = 0
     for product_user in Product_customer_test:
+        sum_of_average = 0
         neighbors = Products_Graph_dic.get(product_user[0])
-        print('{}: check product_user number {}: product {} has {} neighbors').\
-            format(time.asctime(time.localtime(time.time())), i,product_user[0], len(neighbors))
-        i+=1
-        sum_of_average = sum(product_average_dic[neighbor] for neighbor in neighbors)
+        if neighbors == None:
+            Neighbors_average_rank_dictionary[product_user[0]] = 0
+            continue
+        # print('{}: check product_user number {}: product {} has {} neighbors').\
+        #     format(time.asctime(time.localtime(time.time())), i,product_user[0], len(neighbors))
+        # i+=1
+        for neighbor in neighbors:
+            if product_average_dic.get(neighbor) == None:
+                continue
+            sum_of_average += product_average_dic[neighbor]
         average_rank = sum_of_average/float(len(neighbors))
         Neighbors_average_rank_dictionary[product_user[0]] = average_rank
     return Neighbors_average_rank_dictionary
@@ -286,10 +293,10 @@ def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_ran
         if B_c.get(product_user_rank[1]) == None:
             B_c[product_user_rank[1]] = 0
         if product_user_rank[0] in Neighbors_average_rank_dictionary.keys():
-            estimated_ranks.append([product, user, a*R_avg + b*B_p.get(product_user_rank[0]) +
+            estimated_ranks.append([product_user_rank[0], product_user_rank[1], a*R_avg + b*B_p.get(product_user_rank[0]) +
                                     c*B_c.get(product_user_rank[1]) +
                                     d*Neighbors_average_rank_dictionary[product_user_rank[0]]])
-            estimated_parameters.append([product, user, product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
+            estimated_parameters.append([product_user_rank[0], product_user_rank[1], product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
                                          B_c.get(product_user_rank[1]),
                                          Neighbors_average_rank_dictionary[product_user_rank[0]]])
         else:
