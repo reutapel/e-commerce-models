@@ -46,11 +46,12 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
             np.array([Product_customer_rank_matrix[l,:] for l in validation])
         Rank_train, Rank_test = Product_customer_rank_train[:,2], Product_customer_rank_test[:,2]
         estimated_ranks = model_name(Product_customer_rank_train, Rank_train, Product_customer_rank_test, flag)
-        rTilda = np.subtract(Product_customer_rank_test[:,2], estimated_ranks[:,2])
+        estimated_ranks = calcFinalRank(estimated_ranks)
+        # rTilda = np.subtract(Product_customer_rank_test[:,2], estimated_ranks[:,2])
         RMSE = evaluateModel(Product_customer_rank_test, estimated_ranks)
         print('{}: The RMSE of the model {} for iteration {} is: {}').\
             format((time.asctime(time.localtime(time.time()))), model_name, i, RMSE)
-        Create_estimatedR_file(calcFinalRank(estimated_ranks), model_name, Product_customer_rank_test)
+        Create_estimatedR_file(estimated_ranks, model_name, Product_customer_rank_test)
         sum_of_RMSE += RMSE
 
     print('{}: The average RMSE of the model {} using cross-validation with {} folds is: {}').\
@@ -86,12 +87,12 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_te
     # rel_np_train_list, TestCustomers = relTrain(Product_customer_test, Product_customer_rank_train, R_avg_train)
     B_c, B_p = B_pc(Product_customer_rank_test, Product_customer_rank_train, R_avg_train)
     if use_base_model:
-        estimated_ranks, estimated_parameters =\
+        estimated_ranks, estimated_ranks_product_user, estimated_parameters =\
             estimatedRanks(Product_customer_rank_test, R_avg_train, Rank_train, B_c, B_p, d=0)
         if flag:
             np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
                        header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
-        return estimated_ranks
+        return estimated_ranks, estimated_ranks_product_user
     else:
         return R_avg_train, B_c, B_p
 
@@ -104,28 +105,26 @@ def graph_model(Product_customer_train, Rank_train, Product_customer_rank_test, 
     Products_Graph_dic = graph_creation()
     Neighbors_average_rank_dictionary = neighbors_indications(Products_Graph_dic, Product_customer_train,
                                                              Product_customer_rank_test)
-    estimated_ranks, estimated_parameters = estimatedRanks(Product_customer_rank_test, R_avg_train, B_c, B_p,
+    estimated_ranks, estimated_ranks_product_user, estimated_parameters = estimatedRanks(Product_customer_rank_test, R_avg_train, B_c, B_p,
                                                            Neighbors_average_rank_dictionary)
     if flag:
-        np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
-                   header='product, user, rank, R_avg, Bu, Bi, Neighbors_average_rank', comments='')
-    return estimated_ranks
+        write_regression_parameters_to_file(model_name, estimated_parameters)
+        # np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
+        #            header='product, user, rank, R_avg, Bu, Bi, Neighbors_average_rank', comments='')
+    return estimated_ranks, estimated_ranks_product_user
 
 
-# The following takes the relevant training observations that appears in test
-# def relTrain(np_test_list, np_train_list):
-#     print('{}: Start run relTrain').format(time.asctime(time.localtime(time.time())))
-#     TestProducts = np_test_list[:,0]
-#     TestProducts = list(set(TestProducts))
-#     TestProductsLen = len(TestProducts)
-#     TestCustomers = np_test_list[:,1]
-#     TestCustomers = list(set(TestCustomers))
-#     TestCustomersLen = len(TestCustomers)
-#     maskP = np.in1d(np_train_list[:, 0], TestProducts)
-#     maskC = np.in1d(np_train_list[:, 1], TestCustomers)
-#     mask = np.logical_or(maskP, maskC)
-#     rel_np_train_list = np_train_list[mask]
-#     return rel_np_train_list, TestCustomers
+def write_regression_parameters_to_file(model_name, estimated_parameters_list):
+    with open(model_name + "_for_regression_check.csv", 'w') as write_file:
+        writer = csv.writer(write_file, lineterminator='\n')
+        fieldnames2 = ['product', 'user', 'rank', 'R_avg', 'Bu', 'Bi', 'Neighbors_average_rank']
+        writer.writerow(fieldnames2)
+        for estimated_parameters in estimated_parameters_list:
+            writer.writerow([estimated_parameters[0], estimated_parameters[1], estimated_parameters[2],
+                             estimated_parameters[3], estimated_parameters[4], estimated_parameters[5],
+                             estimated_parameters[6]])
+    write_file.close
+
 
 def B_pc(np_test_list, np_train_list, rAvg):
     print('{}: Calculate Bu and Bi in B_pc function').format(time.asctime(time.localtime(time.time())))
@@ -156,26 +155,6 @@ def B_pc(np_test_list, np_train_list, rAvg):
     print('{}: Finish calculate Bu and Bi in B_pc function').format(time.asctime(time.localtime(time.time())))
     return B_c, B_p
 
-# # Returns two dictionaries one for products from test and other for customers from test, where values are list that
-# # in the second index of the list there is a FLOAT Bp and Bc
-# def B_pc(rel_np_train_list, TestCustomers, rAvg):
-#     print('{}: Calculate Bu and Bi in B_pc function').format(time.asctime(time.localtime(time.time())))
-#     B_Customers = coll.defaultdict(lambda: [0] * 2)
-#     B_Products = coll.defaultdict(lambda: [0] * 2)
-#     for obs in rel_np_train_list:
-#         if obs[1] in TestCustomers:
-#             B_Customers[obs[1]][0] += 1
-#             B_Customers[obs[1]][1] += obs[2]
-#         else:
-#             B_Products[obs[0]][0] += 1
-#             B_Products[obs[0]][1] += obs[2]
-#     for key in B_Products.keys():
-#         B_Products[key][1] = B_Products[key][1]/B_Products[key][0]-rAvg
-#     for key in B_Customers.keys():
-#         B_Customers[key][1] = B_Customers[key][1]/B_Customers[key][0]-rAvg
-#     print('{}: Finish calculate Bu and Bi in B_pc function').format(time.asctime(time.localtime(time.time())))
-#     return B_Products, B_Customers
-
 
 #returns two dictionaries of index in matrix for products and for customers, with the matrix itself initialized with zeros.
 def buildIndexesForMatrix(np_PCR_list):
@@ -199,21 +178,6 @@ def buildIndexesForMatrix(np_PCR_list):
     return ProductMatrixIndex, CustomerMatrixIndex, matrix
 
 
-# Create an undirected graph of product1-product2
-# def graph_creation():
-#     print('{}: Start create the graph').format(time.asctime(time.localtime(time.time())))
-#     with open('Network_arcs_test.csv', 'r') as csvfile:
-#         edges = list(csv.reader(csvfile))
-#         i = 0
-#         for products in edges:  # delete the header of the file
-#             if products[0] == 'Product1_ID':
-#                 del edges[i]
-#                 break
-#             i += 1
-#         Products_Graph = nx.DiGraph(edges)
-#     csvfile.close()
-#     return Products_Graph
-
 # Create a dictionary of product1:product2 for the file Network_arcs
 def graph_creation():
     print('{}: Start create the graph').format(time.asctime(time.localtime(time.time())))
@@ -231,23 +195,6 @@ def graph_creation():
             Products_Graph_dic[int(edge[1])].append(int(edge[0]))
     return Products_Graph_dic
 
-
-
-#Create a dictionary: for each product and user = 1 if the user rank of the predecessors of the product, 0 otherwise
-# def neighbors_indications(Products_Graph, Product_customer_train, Product_customer_test):
-#     print('{}: Start find the neighbors indication').format(time.asctime(time.localtime(time.time())))
-#     Neighbors_indications_dictionary = {}
-#     i = 0
-#     for product_user in Product_customer_test:
-#         print('{}: check product_user number {}: product {} has {} neighbors').\
-#             format(time.asctime(time.localtime(time.time())), i,product_user[0],
-#                    len(Products_Graph.predecessors(str(product_user[0]))))
-#         i+=1
-#         for neighbor in Products_Graph.predecessors(str(product_user[0])): #(int(neighbor), product_user[1])
-#             if [int(neighbor), product_user[1]] in Product_customer_train.tolist():
-#                 Neighbors_indications_dictionary[(product_user[0], product_user[1])] = 1
-#                 break #one neighbor which the user has ranked it is enough- no need to check all the neighbors
-#     return Neighbors_indications_dictionary
 
 #Create a dictionary: for each product and user = 1 if the user rank of the predecessors of the product, 0 otherwise
 def neighbors_indications(Products_Graph_dic, Product_customer_train, Product_customer_test):
@@ -287,46 +234,46 @@ def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_ran
     print('{}: Start estimate the rank based on the model').format(time.asctime(time.localtime(time.time())))
     estimated_ranks = []
     estimated_parameters = []
+
+    #insert 0 to each product which is not in B_p
+    test_products = Product_customer_test[:, 0]
+    is_p_in_Bp = np.in1d(test_products, np.array(B_p.keys()))
+    p_not_in_Bp = test_products[np.logical_not(is_p_in_Bp)]
+    for product in p_not_in_Bp:
+        B_p[product] = 0
+
+  # insert 0 to each product which is not in B_c
+    test_users = Product_customer_test[:, 1]
+    is_c_in_Bc = np.in1d(test_users, np.array(B_c.keys()))
+    c_not_in_Bc = test_users[np.logical_not(is_c_in_Bc)]
+    for user in c_not_in_Bc:
+        B_c[user] = 0
+
+    print('{}: Start insert the estimated rank').format(time.asctime(time.localtime(time.time())))
     for product_user_rank in Product_customer_test:
-        if B_p.get(product_user_rank[0]) == None:
-            B_p[product_user_rank[0]] = 0
-        if B_c.get(product_user_rank[1]) == None:
-            B_c[product_user_rank[1]] = 0
         if product_user_rank[0] in Neighbors_average_rank_dictionary.keys():
             estimated_ranks.append([product_user_rank[0], product_user_rank[1], a*R_avg + b*B_p.get(product_user_rank[0]) +
                                     c*B_c.get(product_user_rank[1]) +
                                     d*Neighbors_average_rank_dictionary[product_user_rank[0]]])
-            estimated_parameters.append([product_user_rank[0], product_user_rank[1], product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
-                                         B_c.get(product_user_rank[1]),
+            estimated_parameters.append([product_user_rank[0], product_user_rank[1], product_user_rank[2], R_avg,
+                                         B_p.get(product_user_rank[0]), B_c.get(product_user_rank[1]),
                                          Neighbors_average_rank_dictionary[product_user_rank[0]]])
         else:
             estimated_ranks.append([product, user, a*R_avg + b*B_p.get(product_user_rank[0]) +
                                     c*B_c.get(product_user_rank[1])])
             estimated_parameters.append([product, user, product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
                                          B_c.get(product_user_rank[1]), 0])
-    return np.array(estimated_ranks), np.array(estimated_parameters)
+    print('{}: Finish insert the estimated rank').format(time.asctime(time.localtime(time.time())))
+    estimated_ranks_product_user = estimated_ranks[:, [0,1]]
+    estimated_ranks = estimated_ranks[:, 2]
+    return np.array(estimated_ranks_product_user,dtype=int), np.array(estimated_ranks), estimated_parameters
 
 
 # Evaluate the model: calculate the RMSE for the validation set
 def evaluateModel(Product_customer_rank_test, estimated_ranks):
     print('{}: Start evaluate the RMSE').format(time.asctime(time.localtime(time.time())))
+    final_array = np.subtract(estimated_ranks[:, 2], Product_customer_rank_test[:, 2])
     return np.sum(np.power(np.subtract(estimated_ranks[:, 2], Product_customer_rank_test[:, 2])), 2)
-
-
-# returns two lists: of the customers and of the products which appear in the result file,
-# -> meaning we need to estimate their ranking
-# def RelCusPro():
-#     relevant_products_customers = []
-#     with open("results.csv","r") as csvfile:
-#      reader = csv.DictReader(csvfile)
-#      for row in reader:
-#             relevant_products_customers.append([row['Product_ID'], row['Customer_ID'], 0])
-#     csvfile.close()
-#     # relevant_products_customers = list(set(relevant_products))
-#     relevant_products = list(set(relevant_products))
-#     relevant_customers = list(set(relevant_customers))
-#     return relevant_products, relevant_customers
-
 
 def main():
 ################### read P_C_matrix into numPy matrix ##################################
@@ -344,7 +291,7 @@ def main():
 
 ########################     Cross Validation Part    #################################
     for model_name in (graph_model, base_model):
-        CrossValidation(Product_customer_rank_matrix, model_name, 3)
+        CrossValidation(Product_customer_rank_matrix, model_name, 10)
 #######################################################################################
 
 #############    check the coefficient using multiple regression   ####################
@@ -352,16 +299,16 @@ def main():
 #######################################################################################
 
 ###################    call the results file as numpy array   #########################
-    with open('results.csv', 'r') as csvfile:
-        input_matrix = list(csv.reader(csvfile))
-        i = 0
-        for products in matrix:  # delete the header of the file
-            if products[0] == 'Product_ID':
-                del matrix[i]
-                break
-            i += 1
-        Product_customer_results_matrix = np.array(input_matrix).astype('int')
-    csvfile.close()
+    # with open('results.csv', 'r') as csvfile:
+    #     input_matrix = list(csv.reader(csvfile))
+    #     i = 0
+    #     for products in matrix:  # delete the header of the file
+    #         if products[0] == 'Product_ID':
+    #             del matrix[i]
+    #             break
+    #         i += 1
+    #     Product_customer_results_matrix = np.array(input_matrix).astype('int')
+    # csvfile.close()
 ########################################################################################
 
 #######  run the model #################################################################
@@ -372,8 +319,8 @@ def main():
 #######################################################################################
 
 #######  output file ###################################################################
-    numpy.savetxt("EX2.csv", results_matrix, fmt='%s, %s, %s', delimiter=",",
-                  header='Product_ID,Customer_ID,Customer_rank', comments='')
+    # numpy.savetxt("EX2.csv", results_matrix, fmt='%s, %s, %s', delimiter=",",
+    #               header='Product_ID,Customer_ID,Customer_rank', comments='')
 #######################################################################################
 
 if __name__ == '__main__':
