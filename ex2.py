@@ -67,10 +67,10 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_te
     print('{}: Calculate R average, Bu and Bi').format(time.asctime(time.localtime(time.time())))
     R_avg_train = np.mean(Rank_train)
     # rel_np_train_list, TestCustomers = relTrain(Product_customer_test, Product_customer_rank_train, R_avg_train)
-    Bu, Bi = B_pc(Product_customer_rank_test, Product_customer_rank_train, R_avg_train)
+    B_c, B_p = B_pc(Product_customer_rank_test, Product_customer_rank_train, R_avg_train)
     if use_base_model:
         estimated_ranks, estimated_parameters =\
-            estimatedRanks(Product_customer_rank_test, R_avg_train, Rank_train, Bu, Bi, d=0)
+            estimatedRanks(Product_customer_rank_test, R_avg_train, Rank_train, B_c, B_p, d=0)
         if flag:
             np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
                        header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
@@ -83,10 +83,11 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_te
 # Return a dictionary- for each (i,u) the value is the estimated rank
 def graph_model(Product_customer_train, Rank_train, Product_customer_rank_test, flag = False):
     print('{}: Start run graph_model').format(time.asctime(time.localtime(time.time())))
-    R_avg_train, Bu, Bi = base_model(Product_customer_train, Rank_train, Product_customer_rank_test, False)
+    R_avg_train, B_c, B_p = base_model(Product_customer_train, Rank_train, Product_customer_rank_test, False)
     Products_Graph = graph_creation()
-    Neighbors_indications_dictionary = neighbors_indications(Products_Graph, Product_customer_train[:, [0, 1]], Product_customer_rank_test)
-    estimated_ranks = estimatedRanks(Product_customer_rank_test, R_avg_train, Bu, Bi,
+    Neighbors_indications_dictionary = neighbors_indications(Products_Graph, Product_customer_train[:, [0, 1]],
+                                                             Product_customer_rank_test)
+    estimated_ranks = estimatedRanks(Product_customer_rank_test, R_avg_train, B_c, B_p,
                                      Neighbors_indications_dictionary)
     if flag:
         np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
@@ -211,18 +212,18 @@ def neighbors_indications(Products_Graph, Product_customer_train, Product_custom
 
 # Calculate for each Product_customer couple the estimated value for the rank.
 # Return a numpy array- [product, user, the estimated rank]
-def estimatedRanks(Product_customer_test, R_avg, Bu, Bi, Neighbors_indications_dictionary={}, a=1, b=1, c=1, d=1):
+def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_indications_dictionary={}, a=1, b=1, c=1, d=1):
     print('{}: Start estimate the rank based on the model').format(time.asctime(time.localtime(time.time())))
     estimated_ranks = []
     estimated_parameters = []
     for product, user, rank in Product_customer_test:
         if (product, user) in Neighbors_indications_dictionary.keys():
             #Neighbors_indications_dictionary[(product, user)] = 1 if there is such a key
-            estimated_ranks.append([product, user, a*R_avg + b*Bu[user] + c*Bi[product] + d])
-            estimated_parameters.append([product, user, rank, R_avg, Bu[user], Bi[product], 1])
+            estimated_ranks.append([product, user, a*R_avg + b*B_c[user] + c*B_p[product] + d])
+            estimated_parameters.append([product, user, rank, R_avg, B_c[user], B_p[product], 1])
         else:
-            estimated_ranks.append([product, user, a*R_avg + b*Bu[user] + c*Bi[product]])
-            estimated_parameters.append([product, user, rank, R_avg, Bu[user], Bi[product], 0])
+            estimated_ranks.append([product, user, a*R_avg + b*B_c[user] + c*B_p[product]])
+            estimated_parameters.append([product, user, rank, R_avg, B_c[user], B_p[product], 0])
     return np.array(estimated_ranks), np.array(estimated_parameters)
 
 
