@@ -66,6 +66,7 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_test, u
         return R_avg_train, Bu, Bi
 
 
+#the following returns only the relevant training observations that appears in test
 # The model calculate r as: a*R_avg + b*Bu+ c*Bi + d*(1 if one of the neighbors has a rank with the user, 0 otherwise)
 # Return a dictionary- for each (i,u) the value is the estimated rank
 def graph_model(Product_customer_train, Rank_train, Product_customer_test, flag = False):
@@ -91,7 +92,26 @@ def relTrain(np_test_list, np_train_list):
     maskC = np.in1d(np_train_list[:, 1], TestCustomers)
     mask = np.logical_or(maskP, maskC)
     rel_np_train_list = np_train_list[mask]
-    return rel_np_train_list, TestProductsLen, TestCustomersLen
+    return rel_np_train_list, TestCustomers
+
+
+# returns two dictionaries one for products from test and other for customers from test, where values are list that
+# in the second index of the list there is a FLOAT Bp and Bc 
+def B_pc(rel_np_train_list, TestCustomers, rAvg):
+    B_Customers = coll.defaultdict(lambda: [0] * 2)
+    B_Products = coll.defaultdict(lambda: [0] * 2)
+    for obs in rel_np_train_list:
+        if obs[1] in TestCustomers:
+            B_Customers[obs[1]][0] += 1
+            B_Customers[obs[1]][1] += obs[2]
+        else:
+            B_Products[obs[0]][0] += 1
+            B_Products[obs[0]][1] += obs[2]
+    for key in B_Products.keys():
+        B_Products[key][1] = B_Products[key][1]/B_Products[key][0]-rAvg
+    for key in B_Customers.keys():
+        B_Customers[key][1] = B_Customers[key][1]/B_Customers[key][0]-rAvg
+    return B_Products, B_Customers
 
 
 #returns two dictionaries of index in matrix for products and for customers, with the matrix itself initialized with zeros.

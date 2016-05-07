@@ -4,6 +4,7 @@ import math
 import random
 import time
 import numpy as np
+import collections as coll
 
 
 def main():
@@ -20,48 +21,63 @@ def main():
     # product_neighbors = {}
     # #{product1:[product1_neighbor1 , product1_neighbor2, ...] , product2:[product2_neighbor1 , product2_neighbor2, ...], ... }
 
-    test_list = [[12,34,0],[1,23,0],[1,34,0],[22,22,0]]
-    PCR_list = [[100,22,6],[6,42,4],[1,7,5],[22,4,9],[22,34,6],[13,62,5]]
-    np_test_list = np.array(test_list)
-    print(np_test_list)
-    np_PCR_list = np.array(PCR_list)
-    print(np_PCR_list)
+    # test_list = [[12,34,0],[1,23,0],[1,34,0],[22,22,0]]
+    rel_np_train_list = [[100,22,2],[6,42,4],[1,7,5],[22,4,9],[22,34,6],[13,62,5],[190,62,3],[540,62,3]]
+    # np_test_list = np.array(test_list)
+    # print(np_test_list)
+    # np_PCR_list = np.array(PCR_list)
+    # print(np_PCR_list)
+    rAvg = 3
+    B_Customers = coll.defaultdict(lambda: [0] * 2)
+    B_Products = coll.defaultdict(lambda: [0] * 2)
+    for obs in rel_np_train_list:
+        B_Products[obs[0]][0] += 1
+        B_Products[obs[0]][1] += obs[2]
+        B_Customers[obs[1]][0] += 1
+        B_Customers[obs[1]][1] += obs[2]
+    print(B_Customers)
+    for key in B_Products.keys():
+        B_Products[key][1] = B_Products[key][1]/B_Products[key][0]-rAvg
+    for key in B_Customers.keys():
+        B_Customers[key][1] = B_Customers[key][1]/B_Customers[key][0]-rAvg
+    print(B_Customers)
+
 
 #the following takes the relevant training observations that appears in test
-def relTrain(np_test_list, np_train_list):
-    TestProducts = np_test_list[:,0]
-    TestProducts = list(set(TestProducts))
-    TestProductsLen = len(TestProducts)
-    TestCustomers = np_test_list[:,1]
-    TestCustomers = list(set(TestCustomers))
-    TestCustomersLen = len(TestCustomers)
-    maskP = np.in1d(np_train_list[:, 0], TestProducts)
-    maskC = np.in1d(np_train_list[:, 1], TestCustomers)
-    mask = np.logical_or(maskP, maskC)
-    rel_np_train_list = np_train_list[mask]
-    return rel_np_train_list, TestProductsLen, TestCustomersLen
+# def relTrain(np_test_list, np_train_list):
+#     TestProducts = np_test_list[:,0]
+#     TestProducts = list(set(TestProducts))
+#     TestProductsLen = len(TestProducts)
+#     TestCustomers = np_test_list[:,1]
+#     TestCustomers = list(set(TestCustomers))
+#     TestCustomersLen = len(TestCustomers)
+#     maskP = np.in1d(np_train_list[:, 0], TestProducts)
+#     maskC = np.in1d(np_train_list[:, 1], TestCustomers)
+#     mask = np.logical_or(maskP, maskC)
+#     rel_np_train_list = np_train_list[mask]
+#     return rel_np_train_list, TestProductsLen, TestCustomersLen
 
 #returns two dictionaries of index in matrix for products and for customers, with the matrix itself initialized with zeros.
-def buildIndexesForMatrix(np_PCR_list):
-    Products = np_PCR_list[:, 0]
-    Products = list(set(Products))
-    ProductsLen = len(Products)
-    Customers = np_PCR_list[:, 1]
-    Customers = list(set(Customers))
-    CustomersLen = len(Customers)
-    CustomerMatrixIndex = {}
-    ProductMatrixIndex = {}
-    index = 0
-    for product in Products:
-        ProductMatrixIndex[product] = index
-        index += 1
-    index = 0
-    for customer in Customers:
-        CustomerMatrixIndex[customer] = index
-        index += 1
-    matrix = np.zeros(shape=(ProductsLen, CustomersLen))
-    return ProductMatrixIndex, CustomerMatrixIndex, matrix
-
+# def buildIndexesForMatrix(np_PCR_list):
+#     Products = np_PCR_list[:, 0]
+#     Products = list(set(Products))
+#     ProductsLen = len(Products)
+#     Customers = np_PCR_list[:, 1]
+#     Customers = list(set(Customers))
+#     CustomersLen = len(Customers)
+#     CustomerMatrixIndex = {}
+#     ProductMatrixIndex = {}
+#     index = 0
+#     for product in Products:
+#         ProductMatrixIndex[product] = index
+#         index += 1
+#     index = 0
+#     for customer in Customers:
+#         CustomerMatrixIndex[customer] = index
+#         index += 1
+#     matrix = np.zeros(shape=(ProductsLen, CustomersLen))
+#     return ProductMatrixIndex, CustomerMatrixIndex, matrix
+#
 
 
 
