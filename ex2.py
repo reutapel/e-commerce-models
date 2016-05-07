@@ -54,33 +54,34 @@ def Create_estimatedR_file(estimated_ranks, model_name,Product_customer_rank_tes
 # Return a dictionary- for each (i,u) the value is the estimated rank
 def base_model(Product_customer_rank_train, Rank_train, Product_customer_test, use_base_model = True, flag = False):
     R_avg_train = np.mean(Rank_train)
-    Bu, Bi = minimizeRMSE_model(Product_customer_rank_train, Rank_train, R_avg_train)
+    rel_np_train_list, TestCustomers = relTrain(Product_customer_test, Product_customer_rank_train)
+    Bu, Bi = B_pc(rel_np_train_list, TestCustomers, R_avg_train)
     if use_base_model:
         estimated_ranks, estimated_parameters =\
-            estimatedRanks(Product_customer_test, R_avg_train, Rank_train, Bu, Bi, a=1, b=1, c=1, d=0)
+            estimatedRanks(Product_customer_test, R_avg_train, Rank_train, Bu, Bi, d=0)
         if flag:
-            np.savetxt(model_name + "for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
+            np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
                        header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
         return estimated_ranks
     else:
         return R_avg_train, Bu, Bi
 
 
-#the following returns only the relevant training observations that appears in test
 # The model calculate r as: a*R_avg + b*Bu+ c*Bi + d*(1 if one of the neighbors has a rank with the user, 0 otherwise)
 # Return a dictionary- for each (i,u) the value is the estimated rank
 def graph_model(Product_customer_train, Rank_train, Product_customer_test, flag = False):
     R_avg_train, Bu, Bi = base_model(Product_customer_train, Rank_train, Product_customer_rank_test, False)
     Products_Graph = graph_creation()
-    Neighbors_indications_dictionary = neighbors_indications(Products_Graph , Product_customer_train)
-    estimated_ranks = estimatedRanks(Product_customer_test, R_avg_train, Bu, Bi,Neighbors_indications_dictionary, a, b, c, d)
+    Neighbors_indications_dictionary = neighbors_indications(Products_Graph, Product_customer_train)
+    estimated_ranks = estimatedRanks(Product_customer_test, R_avg_train, Bu, Bi,
+                                     Neighbors_indications_dictionary)
     if flag:
-        np.savetxt(model_name + "for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
+        np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
                    header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
     return estimated_ranks
 
 
-#the following takes the relevant training observations that appears in test
+# The following takes the relevant training observations that appears in test
 def relTrain(np_test_list, np_train_list):
     TestProducts = np_test_list[:,0]
     TestProducts = list(set(TestProducts))
@@ -95,7 +96,7 @@ def relTrain(np_test_list, np_train_list):
     return rel_np_train_list, TestCustomers
 
 
-# returns two dictionaries one for products from test and other for customers from test, where values are list that
+# Returns two dictionaries one for products from test and other for customers from test, where values are list that
 # in the second index of the list there is a FLOAT Bp and Bc 
 def B_pc(rel_np_train_list, TestCustomers, rAvg):
     B_Customers = coll.defaultdict(lambda: [0] * 2)
@@ -169,7 +170,7 @@ def minimizeRMSE_model (Product_customer , Ranks, R_avg):
 
 # Calculate for each Product_customer couple the estimated value for the rank.
 # Return a numpy array- [product, user, the estimated rank]
-def estimatedRanks(Product_customer_test, R_avg, Bu, Bi, Neighbors_indications_dictionary, a=1, b=1, c=1, d=1):
+def estimatedRanks(Product_customer_test, R_avg, Bu, Bi, Neighbors_indications_dictionary={}, a=1, b=1, c=1, d=1):
     estimated_ranks = []
     estimated_parameters = []
     for product, user, rank in Product_customer_test:
