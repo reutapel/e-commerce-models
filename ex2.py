@@ -10,6 +10,7 @@ import time
 import collections as coll
 import statistics
 import itertools
+import logging
 
 
 #cross validation function: reut
@@ -19,6 +20,8 @@ import itertools
 def CrossValidation(Product_customer_rank_matrix, model_name ,k):
     print('{}: Start run cross validations on the model: {} with: {} folds'). \
         format((time.asctime(time.localtime(time.time()))), str(model_name)[10:21], k)
+    logging.info('{}: Start run cross validations on the model: {} with: {} folds'. \
+        format((time.asctime(time.localtime(time.time()))), str(model_name)[10:21], k))
     indexes = [i for i in xrange(len(Product_customer_rank_matrix))]
     random.shuffle(indexes)
 
@@ -41,6 +44,9 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
 
         print('{}: Start run the model: {}, loop number {}').\
             format((time.asctime(time.localtime(time.time()))), model_name,i)
+        logging.info('{}: Start run the model: {}, loop number {}'. \
+            format((time.asctime(time.localtime(time.time()))), model_name, i))
+
         Product_customer_rank_train, Product_customer_rank_test = \
             np.array([Product_customer_rank_matrix[j,:] for j in training]), \
             np.array([Product_customer_rank_matrix[l,:] for l in validation])
@@ -54,11 +60,16 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
         RMSE = evaluateModel(Product_customer_rank_test, final_full_estimated_ranks)
         print('{}: The RMSE of the model {} for iteration {} is: {}').\
             format((time.asctime(time.localtime(time.time()))), model_name, i, RMSE)
+        logging.info('{}: The RMSE of the model {} for iteration {} is: {}'. \
+            format((time.asctime(time.localtime(time.time()))), model_name, i, RMSE))
+
         Create_estimatedR_file(final_full_estimated_ranks, model_name, Product_customer_rank_test,i)
         sum_of_RMSE += RMSE
 
     print('{}: The average RMSE of the model {} using cross-validation with {} folds is: {}').\
         format((time.asctime(time.localtime(time.time()))), model_name, k, sum_of_RMSE/k)
+    logging.info('{}: The average RMSE of the model {} using cross-validation with {} folds is: {}'. \
+        format((time.asctime(time.localtime(time.time()))), model_name, k, sum_of_RMSE / k))
 
 
 #changes scale of ranks to 0-5, rounds and cast to int in estimated ranks
@@ -93,6 +104,7 @@ def Create_estimatedR_file(full_estimated_ranks, model_name,Product_customer_ran
 # Return a dictionary- for each (i,u) the value is the estimated rank
 def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_test, use_base_model = True, flag = False):
     print('{}: Calculate R average, Bu and Bi').format(time.asctime(time.localtime(time.time())))
+    logging.info('{}: Calculate R average, Bu and Bi'.format(time.asctime(time.localtime(time.time()))))
     R_avg_train = np.mean(Rank_train)
     # rel_np_train_list, TestCustomers = relTrain(Product_customer_test, Product_customer_rank_train, R_avg_train)
     B_c, B_p = B_pc(Product_customer_rank_test, Product_customer_rank_train, R_avg_train)
@@ -111,7 +123,8 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_te
 # The model calculate r as: a*R_avg + b*Bu+ c*Bi + d*(1 if one of the neighbors has a rank with the user, 0 otherwise)
 # Return a dictionary- for each (i,u) the value is the estimated rank
 def graph_model(Product_customer_train, Rank_train, Product_customer_rank_test, flag = False):
-    print('{}: Start run graph_model').format(time.asctime(time.localtime(time.time())))
+    print('{}: Start run graph_model'.format(time.asctime(time.localtime(time.time()))))
+    logging.info('{}: Start run graph_model'.format(time.asctime(time.localtime(time.time()))))
     R_avg_train, B_c, B_p = base_model(Product_customer_train, Rank_train, Product_customer_rank_test, False)
     Products_Graph_dic = graph_creation()
     Neighbors_average_rank_dictionary = neighbors_indications(Products_Graph_dic, Product_customer_train,
@@ -139,6 +152,7 @@ def write_regression_parameters_to_file(model_name, estimated_parameters_list):
 
 def B_pc(np_test_list, np_train_list, rAvg):
     print('{}: Calculate Bu and Bi in B_pc function').format(time.asctime(time.localtime(time.time())))
+    logging.info('{}: Calculate Bu and Bi in B_pc function'.format(time.asctime(time.localtime(time.time()))))
     TestProducts = np_test_list[:,0]
     TestProducts = list(set(TestProducts))
     TestCustomers = np_test_list[:,1]
@@ -164,6 +178,7 @@ def B_pc(np_test_list, np_train_list, rAvg):
         B_c[customer] = average_sorted_customers[i] - rAvg
         i += 1
     print('{}: Finish calculate Bu and Bi in B_pc function').format(time.asctime(time.localtime(time.time())))
+    logging.info('{}: Finish calculate Bu and Bi in B_pc function'.format(time.asctime(time.localtime(time.time()))))
     return B_c, B_p
 
 
@@ -192,6 +207,7 @@ def buildIndexesForMatrix(np_PCR_list):
 # Create a dictionary of product1:product2 for the file Network_arcs
 def graph_creation():
     print('{}: Start create the graph').format(time.asctime(time.localtime(time.time())))
+    logging.info('{}: Start create the graph'.format(time.asctime(time.localtime(time.time()))))
     with open('Network_arcs.csv', 'r') as csvfile:
         edges = list(csv.reader(csvfile))
         i = 0
@@ -210,6 +226,7 @@ def graph_creation():
 #Create a dictionary: for each product and user = 1 if the user rank of the predecessors of the product, 0 otherwise
 def neighbors_indications(Products_Graph_dic, Product_customer_train, Product_customer_test):
     print('{}: Start find the neighbors indication').format(time.asctime(time.localtime(time.time())))
+    logging.info('{}: Start find the neighbors indication'.format(time.asctime(time.localtime(time.time()))))
     Neighbors_average_rank_dictionary = {}
     all_product_rank = Product_customer_train[:, [0, 2]]
     sorted_products, Pidx, Pcnt = np.unique(all_product_rank[:, 0], return_inverse=True, return_counts=True)
@@ -243,6 +260,7 @@ def neighbors_indications(Products_Graph_dic, Product_customer_train, Product_cu
 # Return a numpy array- [product, user, the estimated rank]
 def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_rank_dictionary={}, a=1, b=1, c=1, d=1):
     print('{}: Start estimate the rank based on the model').format(time.asctime(time.localtime(time.time())))
+    logging.info('{}: Start estimate the rank based on the model'.format(time.asctime(time.localtime(time.time()))))
     full_estimated_ranks = {}
     estimated_parameters = []
 
@@ -261,6 +279,7 @@ def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_ran
         B_c[user] = 0
 
     print('{}: Start insert the estimated rank').format(time.asctime(time.localtime(time.time())))
+    logging.info('{}: Start insert the estimated rank'.format(time.asctime(time.localtime(time.time()))))
     for product_user_rank in Product_customer_test:
         if product_user_rank[0] in Neighbors_average_rank_dictionary.keys():
             full_estimated_ranks[(product_user_rank[0], product_user_rank[1])]=\
@@ -274,6 +293,7 @@ def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_ran
             estimated_parameters.append([product, user, product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
                                          B_c.get(product_user_rank[1]), 0])
     print('{}: Finish insert the estimated rank').format(time.asctime(time.localtime(time.time())))
+    logging.info('{}: Finish insert the estimated rank'.format(time.asctime(time.localtime(time.time()))))
     estimated_ranks_product_user = full_estimated_ranks.keys()
     estimated_ranks = [full_estimated_ranks.values()]
     estimated_ranks_product_user = np.array(estimated_ranks_product_user, dtype=int)
@@ -284,9 +304,11 @@ def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_ran
 # Evaluate the model: calculate the RMSE for the validation set
 def evaluateModel(Product_customer_rank_test, estimated_ranks):
     print('{}: Start evaluate the RMSE').format(time.asctime(time.localtime(time.time())))
+    logging.info('{}: Start evaluate the RMSE'.format(time.asctime(time.localtime(time.time()))))
     return np.sum(np.power(np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:, 2]), 2))
 
 def main():
+    logging.basicConfig(filename='logfile.log', level=logging.DEBUG)
 ################### read P_C_matrix into numPy matrix ##################################
     with open('P_C_matrix.csv', 'r') as csvfile:
         input_matrix = list(csv.reader(csvfile))
