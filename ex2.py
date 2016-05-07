@@ -59,14 +59,14 @@ def Create_estimatedR_file(estimated_ranks, model_name,Product_customer_rank_tes
 
 # The base model which calculate r as: R_avg + Bu+ Bi
 # Return a dictionary- for each (i,u) the value is the estimated rank
-def base_model(Product_customer_rank_train, Rank_train, Product_customer_test, use_base_model = True, flag = False):
+def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_test, use_base_model = True, flag = False):
     print('{}: Calculate R average, Bu and Bi').format(time.asctime(time.localtime(time.time())))
     R_avg_train = np.mean(Rank_train)
     # rel_np_train_list, TestCustomers = relTrain(Product_customer_test, Product_customer_rank_train, R_avg_train)
     Bu, Bi = B_pc(Product_customer_rank_test, Product_customer_rank_train, R_avg_train)
     if use_base_model:
         estimated_ranks, estimated_parameters =\
-            estimatedRanks(Product_customer_test, R_avg_train, Rank_train, Bu, Bi, d=0)
+            estimatedRanks(Product_customer_rank_test, R_avg_train, Rank_train, Bu, Bi, d=0)
         if flag:
             np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
                        header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
