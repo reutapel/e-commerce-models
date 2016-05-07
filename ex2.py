@@ -262,7 +262,7 @@ def neighbors_indications(Products_Graph_dic, Product_customer_train, Product_cu
         product_average_dic[product] = average_sorted_products[j]
         j+= 1
 
-    # i = 0
+    i = 0
     for product_user in Product_customer_test:
         neighbors = Products_Graph_dic.get(product_user[0])
         print('{}: check product_user number {}: product {} has {} neighbors').\
