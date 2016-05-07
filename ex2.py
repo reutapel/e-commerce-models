@@ -18,7 +18,7 @@ import itertools
 # 3. validate the model on the validation set
 def CrossValidation(Product_customer_rank_matrix, model_name ,k):
     print('{}: Start run cross validations on the model: {} with: {} folds'). \
-        format((time.asctime(time.localtime(time.time()))), model_name, k)
+        format((time.asctime(time.localtime(time.time()))), str(model_name)[10:21], k)
     indexes = [i for i in xrange(len(Product_customer_rank_matrix))]
     random.shuffle(indexes)
 
@@ -45,13 +45,16 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
             np.array([Product_customer_rank_matrix[j,:] for j in training]), \
             np.array([Product_customer_rank_matrix[l,:] for l in validation])
         Rank_train, Rank_test = Product_customer_rank_train[:,2], Product_customer_rank_test[:,2]
-        estimated_ranks = model_name(Product_customer_rank_train, Rank_train, Product_customer_rank_test, flag)
-        estimated_ranks = calcFinalRank(estimated_ranks)
-        # rTilda = np.subtract(Product_customer_rank_test[:,2], estimated_ranks[:,2])
-        RMSE = evaluateModel(Product_customer_rank_test, estimated_ranks)
+        estimated_ranks, estimated_ranks_product_user =\
+            model_name(Product_customer_rank_train, Rank_train, Product_customer_rank_test, flag)
+        estimated_ranks = calcFinalRank(estimated_ranks.T)
+        final_estimated_ranks = estimated_ranks.astype(np.int)
+        final_full_estimated_ranks = np.concatenate((estimated_ranks_product_user, final_estimated_ranks), axis=1)
+        # rTilda = np.subtract(Product_customer_rank_test[:,2], final_full_estimated_ranks[:,2])
+        RMSE = evaluateModel(Product_customer_rank_test, final_full_estimated_ranks)
         print('{}: The RMSE of the model {} for iteration {} is: {}').\
             format((time.asctime(time.localtime(time.time()))), model_name, i, RMSE)
-        Create_estimatedR_file(estimated_ranks, model_name, Product_customer_rank_test)
+        Create_estimatedR_file(final_full_estimated_ranks, model_name, Product_customer_rank_test,i)
         sum_of_RMSE += RMSE
 
     print('{}: The average RMSE of the model {} using cross-validation with {} folds is: {}').\
@@ -60,23 +63,30 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
 
 #changes scale of ranks to 0-5, rounds and cast to int in estimated ranks
 def calcFinalRank(estimated_ranks):
-    OldMin = np.nanmin(estimated_ranks[:, 2])
-    OldMax = np.nanmax(estimated_ranks[:, 2])
+    OldMin = np.nanmin(estimated_ranks)
+    OldMax = np.nanmax(estimated_ranks)
     OldRange = (OldMax - OldMin)
+    i = 0
     for obs in estimated_ranks:
-        OldRank = obs[2]
-        NewRank = (((OldRank - OldMin) * 5) / OldRange)
+        OldRank = obs
+        if OldRange == 0:
+            NewRank = ((OldRank - OldMin) * 5)
+        else:
+            NewRank = (((OldRank - OldMin) * 5) / OldRange) #change - if the old range is 0 --> it doesnt good!
         Final = int(round(NewRank))
-        obs[2] = Final
+        estimated_ranks[i] = Final
+        i += 1
     return estimated_ranks
 
 
 # Create output file
-def Create_estimatedR_file(estimated_ranks, model_name,Product_customer_rank_test,i):
-    np.savetxt(model_name+"_"+i+"_estimatedRanks.csv", estimated_ranks, fmt='%s, %s, %s', delimiter=",",
+def Create_estimatedR_file(full_estimated_ranks, model_name,Product_customer_rank_test,i):
+    model_name= str(model_name)[10:21]
+    np.savetxt(str(model_name) + "_" + str(i)+"_estimatedRanks.csv", full_estimated_ranks, fmt='%s, %s, %s', delimiter=",",
                header='Product_ID,Customer_ID,Customer_estimated_rank', comments='')
-    np.savetxt(model_name + "_" + i + "_realRanks.csv", Product_customer_rank_test, fmt='%s, %s, %s', delimiter=",",
+    np.savetxt(str(model_name) + "_" + str(i) + "_realRanks.csv", Product_customer_rank_test, fmt='%s, %s, %s', delimiter=",",
                header='Product_ID,Customer_ID,Customer_real_rank', comments='')
+
 
 
 # The base model which calculate r as: R_avg + Bu+ Bi
@@ -90,8 +100,9 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_te
         estimated_ranks, estimated_ranks_product_user, estimated_parameters =\
             estimatedRanks(Product_customer_rank_test, R_avg_train, Rank_train, B_c, B_p, d=0)
         if flag:
-            np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
-                       header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
+            write_regression_parameters_to_file('base_model', estimated_parameters)
+            # np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
+            #            header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
         return estimated_ranks, estimated_ranks_product_user
     else:
         return R_avg_train, B_c, B_p
@@ -105,15 +116,15 @@ def graph_model(Product_customer_train, Rank_train, Product_customer_rank_test, 
     Products_Graph_dic = graph_creation()
     Neighbors_average_rank_dictionary = neighbors_indications(Products_Graph_dic, Product_customer_train,
                                                              Product_customer_rank_test)
-    estimated_ranks, estimated_ranks_product_user, estimated_parameters = estimatedRanks(Product_customer_rank_test, R_avg_train, B_c, B_p,
-                                                           Neighbors_average_rank_dictionary)
+    estimated_ranks, estimated_ranks_product_user, estimated_parameters =\
+        estimatedRanks(Product_customer_rank_test, R_avg_train, B_c, B_p, Neighbors_average_rank_dictionary)
     if flag:
-        write_regression_parameters_to_file(model_name, estimated_parameters)
+        write_regression_parameters_to_file('graph_model', estimated_parameters)
         # np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
         #            header='product, user, rank, R_avg, Bu, Bi, Neighbors_average_rank', comments='')
     return estimated_ranks, estimated_ranks_product_user
 
-
+# Create an output file for the regression
 def write_regression_parameters_to_file(model_name, estimated_parameters_list):
     with open(model_name + "_for_regression_check.csv", 'w') as write_file:
         writer = csv.writer(write_file, lineterminator='\n')
@@ -232,7 +243,7 @@ def neighbors_indications(Products_Graph_dic, Product_customer_train, Product_cu
 # Return a numpy array- [product, user, the estimated rank]
 def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_rank_dictionary={}, a=1, b=1, c=1, d=1):
     print('{}: Start estimate the rank based on the model').format(time.asctime(time.localtime(time.time())))
-    estimated_ranks = []
+    full_estimated_ranks = {}
     estimated_parameters = []
 
     #insert 0 to each product which is not in B_p
@@ -252,28 +263,28 @@ def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_ran
     print('{}: Start insert the estimated rank').format(time.asctime(time.localtime(time.time())))
     for product_user_rank in Product_customer_test:
         if product_user_rank[0] in Neighbors_average_rank_dictionary.keys():
-            estimated_ranks.append([product_user_rank[0], product_user_rank[1], a*R_avg + b*B_p.get(product_user_rank[0]) +
-                                    c*B_c.get(product_user_rank[1]) +
-                                    d*Neighbors_average_rank_dictionary[product_user_rank[0]]])
+            full_estimated_ranks[(product_user_rank[0], product_user_rank[1])]=\
+                a*R_avg + b*B_p.get(product_user_rank[0]) + c*B_c.get(product_user_rank[1]) +\
+                d*Neighbors_average_rank_dictionary[product_user_rank[0]]
             estimated_parameters.append([product_user_rank[0], product_user_rank[1], product_user_rank[2], R_avg,
                                          B_p.get(product_user_rank[0]), B_c.get(product_user_rank[1]),
                                          Neighbors_average_rank_dictionary[product_user_rank[0]]])
         else:
-            estimated_ranks.append([product, user, a*R_avg + b*B_p.get(product_user_rank[0]) +
-                                    c*B_c.get(product_user_rank[1])])
+            full_estimated_ranks[(product, user)] = a*R_avg + b*B_p.get(product_user_rank[0]) + c*B_c.get(product_user_rank[1])
             estimated_parameters.append([product, user, product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
                                          B_c.get(product_user_rank[1]), 0])
     print('{}: Finish insert the estimated rank').format(time.asctime(time.localtime(time.time())))
-    estimated_ranks_product_user = estimated_ranks[:, [0,1]]
-    estimated_ranks = estimated_ranks[:, 2]
-    return np.array(estimated_ranks_product_user,dtype=int), np.array(estimated_ranks), estimated_parameters
+    estimated_ranks_product_user = full_estimated_ranks.keys()
+    estimated_ranks = [full_estimated_ranks.values()]
+    estimated_ranks_product_user = np.array(estimated_ranks_product_user, dtype=int)
+    estimated_ranks = np.array(estimated_ranks)
+    return estimated_ranks, estimated_ranks_product_user, estimated_parameters
 
 
 # Evaluate the model: calculate the RMSE for the validation set
 def evaluateModel(Product_customer_rank_test, estimated_ranks):
     print('{}: Start evaluate the RMSE').format(time.asctime(time.localtime(time.time())))
-    final_array = np.subtract(estimated_ranks[:, 2], Product_customer_rank_test[:, 2])
-    return np.sum(np.power(np.subtract(estimated_ranks[:, 2], Product_customer_rank_test[:, 2])), 2)
+    return np.sum(np.power(np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:, 2]), 2))
 
 def main():
 ################### read P_C_matrix into numPy matrix ##################################
@@ -290,12 +301,12 @@ def main():
 #######################################################################################
 
 ########################     Cross Validation Part    #################################
-    for model_name in (graph_model, base_model):
-        CrossValidation(Product_customer_rank_matrix, model_name, 10)
+    # for model_name in (graph_model, base_model):
+    #     CrossValidation(Product_customer_rank_matrix, model_name, 10)
 #######################################################################################
 
 #############    check the coefficient using multiple regression   ####################
-    # CrossValidation(Product_customer_rank_matrix, graph_model, 1)
+    CrossValidation(Product_customer_rank_matrix, graph_model, 1)
 #######################################################################################
 
 ###################    call the results file as numpy array   #########################
