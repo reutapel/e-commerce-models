@@ -8,6 +8,8 @@ import networkx as nx
 from random import shuffle
 import time
 import collections as coll
+import statistics
+import itertools
 
 
 #cross validation function: reut
@@ -15,6 +17,8 @@ import collections as coll
 # 2. run the model on the train set
 # 3. validate the model on the validation set
 def CrossValidation(Product_customer_rank_matrix, model_name ,k):
+    print('{}: Start run cross validations on the model: {} with: {} folds'). \
+        format((time.asctime(time.localtime(time.time()))), model_name, k)
     indexes = [i for i in xrange(len(Product_customer_rank_matrix))]
     random.shuffle(indexes)
 
@@ -36,7 +40,7 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
                     training += slices[j]
 
         print('{}: Start run the model: {}, loop number {}').\
-            format((time.asctime(time.localtime(time.time()))), str(model_name),i)
+            format((time.asctime(time.localtime(time.time()))), model_name,i)
         Product_customer_rank_train, Product_customer_rank_test = \
             np.array([Product_customer_rank_matrix[j,:] for j in training]), \
             np.array([Product_customer_rank_matrix[l,:] for l in validation])
@@ -76,7 +80,7 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_te
                        header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
         return estimated_ranks
     else:
-        return R_avg_train, Bu, Bi
+        return R_avg_train, B_c, B_p
 
 
 # The model calculate r as: a*R_avg + b*Bu+ c*Bi + d*(1 if one of the neighbors has a rank with the user, 0 otherwise)
@@ -84,14 +88,14 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_te
 def graph_model(Product_customer_train, Rank_train, Product_customer_rank_test, flag = False):
     print('{}: Start run graph_model').format(time.asctime(time.localtime(time.time())))
     R_avg_train, B_c, B_p = base_model(Product_customer_train, Rank_train, Product_customer_rank_test, False)
-    Products_Graph = graph_creation()
-    Neighbors_indications_dictionary = neighbors_indications(Products_Graph, Product_customer_train[:, [0, 1]],
+    Products_Graph_dic = graph_creation()
+    Neighbors_average_rank_dictionary = neighbors_indications(Products_Graph_dic, Product_customer_train,
                                                              Product_customer_rank_test)
-    estimated_ranks = estimatedRanks(Product_customer_rank_test, R_avg_train, B_c, B_p,
-                                     Neighbors_indications_dictionary)
+    estimated_ranks, estimated_parameters = estimatedRanks(Product_customer_rank_test, R_avg_train, B_c, B_p,
+                                                           Neighbors_average_rank_dictionary)
     if flag:
         np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
-                   header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
+                   header='product, user, rank, R_avg, Bu, Bi, Neighbors_average_rank', comments='')
     return estimated_ranks
 
 
@@ -183,9 +187,24 @@ def buildIndexesForMatrix(np_PCR_list):
 
 
 # Create an undirected graph of product1-product2
+# def graph_creation():
+#     print('{}: Start create the graph').format(time.asctime(time.localtime(time.time())))
+#     with open('Network_arcs_test.csv', 'r') as csvfile:
+#         edges = list(csv.reader(csvfile))
+#         i = 0
+#         for products in edges:  # delete the header of the file
+#             if products[0] == 'Product1_ID':
+#                 del edges[i]
+#                 break
+#             i += 1
+#         Products_Graph = nx.DiGraph(edges)
+#     csvfile.close()
+#     return Products_Graph
+
+# Create a dictionary of product1:product2 for the file Network_arcs
 def graph_creation():
     print('{}: Start create the graph').format(time.asctime(time.localtime(time.time())))
-    with open('Network_arcs.csv', 'r') as csvfile:
+    with open('Network_arcs_test.csv', 'r') as csvfile:
         edges = list(csv.reader(csvfile))
         i = 0
         for products in edges:  # delete the header of the file
@@ -193,37 +212,78 @@ def graph_creation():
                 del edges[i]
                 break
             i += 1
-        Products_Graph = nx.DiGraph(edges)
-    csvfile.close()
-    return Products_Graph
+
+        Products_Graph_dic = coll.defaultdict(list) #the dictionary is: product_2:product_1
+        for edge in edges:
+            Products_Graph_dic[int(edge[1])].append(int(edge[0]))
+    return Products_Graph_dic
+
 
 
 #Create a dictionary: for each product and user = 1 if the user rank of the predecessors of the product, 0 otherwise
-def neighbors_indications(Products_Graph, Product_customer_train, Product_customer_test):
+# def neighbors_indications(Products_Graph, Product_customer_train, Product_customer_test):
+#     print('{}: Start find the neighbors indication').format(time.asctime(time.localtime(time.time())))
+#     Neighbors_indications_dictionary = {}
+#     i = 0
+#     for product_user in Product_customer_test:
+#         print('{}: check product_user number {}: product {} has {} neighbors').\
+#             format(time.asctime(time.localtime(time.time())), i,product_user[0],
+#                    len(Products_Graph.predecessors(str(product_user[0]))))
+#         i+=1
+#         for neighbor in Products_Graph.predecessors(str(product_user[0])): #(int(neighbor), product_user[1])
+#             if [int(neighbor), product_user[1]] in Product_customer_train.tolist():
+#                 Neighbors_indications_dictionary[(product_user[0], product_user[1])] = 1
+#                 break #one neighbor which the user has ranked it is enough- no need to check all the neighbors
+#     return Neighbors_indications_dictionary
+
+#Create a dictionary: for each product and user = 1 if the user rank of the predecessors of the product, 0 otherwise
+def neighbors_indications(Products_Graph_dic, Product_customer_train, Product_customer_test):
     print('{}: Start find the neighbors indication').format(time.asctime(time.localtime(time.time())))
-    Neighbors_indications_dictionary = {}
+    Neighbors_average_rank_dictionary = {}
+    all_product_rank = Product_customer_train[:, [0, 2]]
+    sorted_products, Pidx, Pcnt = np.unique(all_product_rank[:, 0], return_inverse=True, return_counts=True)
+    average_sorted_products = np.bincount(Pidx, weights=all_product_rank[:, 1]) / Pcnt
+    product_average_dic = {}
+    j = 0
+    for product in sorted_products:
+        product_average_dic[product] = average_sorted_products[j]
+        j+= 1
+
+    # i = 0
     for product_user in Product_customer_test:
-        for neighbor in Products_Graph.predecessors(str(product_user[0])): #(int(neighbor), product_user[1])
-            if [int(neighbor), product_user[1]] in Product_customer_train.tolist():
-                Neighbors_indications_dictionary[(product_user[0], product_user[1])] = 1
-                break #one neighbor which the user has ranked it is enough- no need to check all the neighbors
-    return Neighbors_indications_dictionary
+        neighbors = Products_Graph_dic.get(product_user[0])
+        print('{}: check product_user number {}: product {} has {} neighbors').\
+            format(time.asctime(time.localtime(time.time())), i,product_user[0], len(neighbors))
+        i+=1
+        sum_of_average = sum(product_average_dic[neighbor] for neighbor in neighbors)
+        average_rank = sum_of_average/float(len(neighbors))
+        Neighbors_average_rank_dictionary[product_user[0]] = average_rank
+    return Neighbors_average_rank_dictionary
 
 
 # Calculate for each Product_customer couple the estimated value for the rank.
 # Return a numpy array- [product, user, the estimated rank]
-def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_indications_dictionary={}, a=1, b=1, c=1, d=1):
+def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_rank_dictionary={}, a=1, b=1, c=1, d=1):
     print('{}: Start estimate the rank based on the model').format(time.asctime(time.localtime(time.time())))
     estimated_ranks = []
     estimated_parameters = []
-    for product, user, rank in Product_customer_test:
-        if (product, user) in Neighbors_indications_dictionary.keys():
-            #Neighbors_indications_dictionary[(product, user)] = 1 if there is such a key
-            estimated_ranks.append([product, user, a*R_avg + b*B_c[user] + c*B_p[product] + d])
-            estimated_parameters.append([product, user, rank, R_avg, B_c[user], B_p[product], 1])
+    for product_user_rank in Product_customer_test:
+        if B_p.get(product_user_rank[0]) == None:
+            B_p[product_user_rank[0]] = 0
+        if B_c.get(product_user_rank[1]) == None:
+            B_c[product_user_rank[1]] = 0
+        if product_user_rank[0] in Neighbors_average_rank_dictionary.keys():
+            estimated_ranks.append([product, user, a*R_avg + b*B_p.get(product_user_rank[0]) +
+                                    c*B_c.get(product_user_rank[1]) +
+                                    d*Neighbors_average_rank_dictionary[product_user_rank[0]]])
+            estimated_parameters.append([product, user, product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
+                                         B_c.get(product_user_rank[1]),
+                                         Neighbors_average_rank_dictionary[product_user_rank[0]]])
         else:
-            estimated_ranks.append([product, user, a*R_avg + b*B_c[user] + c*B_p[product]])
-            estimated_parameters.append([product, user, rank, R_avg, B_c[user], B_p[product], 0])
+            estimated_ranks.append([product, user, a*R_avg + b*B_p.get(product_user_rank[0]) +
+                                    c*B_c.get(product_user_rank[1])])
+            estimated_parameters.append([product, user, product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
+                                         B_c.get(product_user_rank[1]), 0])
     return np.array(estimated_ranks), np.array(estimated_parameters)
 
 
@@ -263,12 +323,12 @@ def main():
 #######################################################################################
 
 ########################     Cross Validation Part    #################################
-    # for model_name in (graph_model, base_model):
-    #     CrossValidation(Product_customer_rank_matrix, model_name, 3)
+    for model_name in (graph_model, base_model):
+        CrossValidation(Product_customer_rank_matrix, model_name, 3)
 #######################################################################################
 
 #############    check the coefficient using multiple regression   ####################
-    CrossValidation(Product_customer_rank_matrix, graph_model, 1)
+    # CrossValidation(Product_customer_rank_matrix, graph_model, 1)
 #######################################################################################
 
 ###################    call the results file as numpy array   #########################
