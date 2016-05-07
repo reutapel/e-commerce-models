@@ -50,11 +50,24 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
         RMSE = evaluateModel(Product_customer_rank_test, estimated_ranks)
         print('{}: The RMSE of the model {} for iteration {} is: {}').\
             format((time.asctime(time.localtime(time.time()))), model_name, i, RMSE)
-        Create_estimatedR_file(estimated_ranks, model_name, Product_customer_rank_test)
+        Create_estimatedR_file(calcFinalRank(estimated_ranks), model_name, Product_customer_rank_test)
         sum_of_RMSE += RMSE
 
     print('{}: The average RMSE of the model {} using cross-validation with {} folds is: {}').\
         format((time.asctime(time.localtime(time.time()))), model_name, k, sum_of_RMSE/k)
+
+
+#changes scale of ranks to 0-5, rounds and cast to int in estimated ranks
+def calcFinalRank(estimated_ranks):
+    OldMin = np.nanmin(estimated_ranks[:, 2])
+    OldMax = np.nanmax(estimated_ranks[:, 2])
+    OldRange = (OldMax - OldMin)
+    for obs in estimated_ranks:
+        OldRank = obs[2]
+        NewRank = (((OldRank - OldMin) * 5) / OldRange)
+        Final = int(round(NewRank))
+        obs[2] = Final
+    return estimated_ranks
 
 
 # Create output file
@@ -204,7 +217,7 @@ def buildIndexesForMatrix(np_PCR_list):
 # Create a dictionary of product1:product2 for the file Network_arcs
 def graph_creation():
     print('{}: Start create the graph').format(time.asctime(time.localtime(time.time())))
-    with open('Network_arcs_test.csv', 'r') as csvfile:
+    with open('Network_arcs.csv', 'r') as csvfile:
         edges = list(csv.reader(csvfile))
         i = 0
         for products in edges:  # delete the header of the file

@@ -22,8 +22,8 @@ def main():
     # #{product1:[product1_neighbor1 , product1_neighbor2, ...] , product2:[product2_neighbor1 , product2_neighbor2, ...], ... }
     rAvg = 3
     test_list = [[12,34,0],[1,23,0],[1,34,0],[22,22,0]]
-    train_list = [[100,22,2],[6,42,4],[1,7,5],[22,4,9],[22,34,6],[13,62,5],[190,62,3],[540,62,3],[2, 2, 4], [2, 14, 1]]
-    np_train_list = np.array(train_list)
+    train_list = [[100,22,0],[6,42,4],[1,7,5],[22,4,5],[22,34,6],[13,62,5.2],[190,62,3.1333],[540,62,3.8],[2, 2, -4], [2, 14, 1]]
+    estimated_ranks = np.array(train_list)
     np_test_list = np.array(test_list)
     # rel_product_rank = np_test_list[:, [0, 2]]
     # print(rel_product_rank)
@@ -34,34 +34,48 @@ def main():
     # print(avg)
     # print(unq)
 
+def calcFinalRank(estimated_ranks):
+    OldMin = np.nanmin(estimated_ranks[:, 2])
+    OldMax = np.nanmax(estimated_ranks[:, 2])
+    OldRange = (OldMax - OldMin)
+    for obs in estimated_ranks:
+        OldRank = obs[2]
+        NewRank = (((OldRank - OldMin) * 5) / OldRange)
+        Final = int(round(NewRank))
+        obs[2] = Final
+    return estimated_ranks
 
-    TestProducts = np_test_list[:,0]
-    TestProducts = list(set(TestProducts))
-    TestCustomers = np_test_list[:,1]
-    TestCustomers = list(set(TestCustomers))
-    maskP = np.in1d(np_train_list[:, 0], TestProducts)
-    maskC = np.in1d(np_train_list[:, 1], TestCustomers)
-    mask = np.logical_or(maskP, maskC)
-    rel_np_train_list = np_train_list[mask]
-    rel_product_rank = rel_np_train_list[:, [0, 2]]
-    sorted_products, Pidx, Pcnt = np.unique(rel_product_rank[:, 0], return_inverse=True, return_counts=True)
-    average_sorted_products = np.bincount(Pidx, weights=rel_product_rank[:, 1]) / Pcnt
-    rel_customer_rank = rel_np_train_list[:, [1, 2]]
-    sorted_customers, Cidx, Ccnt = np.unique(rel_customer_rank[:, 0], return_inverse=True, return_counts=True)
-    average_sorted_customers = np.bincount(Cidx, weights=rel_customer_rank[:, 1]) / Ccnt
-    B_p = {}
-    B_c = {}
-    i = 0
-    for product in sorted_products:
-        B_p[product] = average_sorted_products[i] - rAvg
-        i += 1
-    i = 0
-    for customer in sorted_customers:
-        B_c[customer] = average_sorted_customers[i] - rAvg
-        i += 1
-    print(B_p)
-    print(B_c)
 
+
+
+    # TestProducts = np_test_list[:,0]
+    # TestProducts = list(set(TestProducts))
+    # TestCustomers = np_test_list[:,1]
+    # TestCustomers = list(set(TestCustomers))
+    # maskP = np.in1d(np_train_list[:, 0], TestProducts)
+    # maskC = np.in1d(np_train_list[:, 1], TestCustomers)
+    # mask = np.logical_or(maskP, maskC)
+    # rel_np_train_list = np_train_list[mask]
+    # rel_product_rank = rel_np_train_list[:, [0, 2]]
+    # sorted_products, Pidx, Pcnt = np.unique(rel_product_rank[:, 0], return_inverse=True, return_counts=True)
+    # average_sorted_products = np.bincount(Pidx, weights=rel_product_rank[:, 1]) / Pcnt
+    # rel_customer_rank = rel_np_train_list[:, [1, 2]]
+    # sorted_customers, Cidx, Ccnt = np.unique(rel_customer_rank[:, 0], return_inverse=True, return_counts=True)
+    # average_sorted_customers = np.bincount(Cidx, weights=rel_customer_rank[:, 1]) / Ccnt
+    # B_p = {}
+    # B_c = {}
+    # i = 0
+    # for product in sorted_products:
+    #     B_p[product] = average_sorted_products[i] - rAvg
+    #     i += 1
+    # i = 0
+    # for customer in sorted_customers:
+    #     B_c[customer] = average_sorted_customers[i] - rAvg
+    #     i += 1
+    # print(B_p)
+    # print(B_c)
+    # # x = B_c.get(34)+ B_c.get(1000)
+    # print(B_c.get(34))
 
 
     # print(np_test_list)
