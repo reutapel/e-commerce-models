@@ -3,11 +3,11 @@ import math
 import random
 import numpy as np
 from numpy import distutils
-# from sklearn.cross_validation import KFold
-import networkx as nx
 from random import shuffle
 import time
 import collections as coll
+import itertools
+
 
 
 #cross validation function: reut
@@ -46,11 +46,24 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
         RMSE = evaluateModel(Product_customer_rank_test, estimated_ranks)
         print('{}: The RMSE of the model {} for iteration {} is: {}').\
             format((time.asctime(time.localtime(time.time()))), model_name, i, RMSE)
-        Create_estimatedR_file(estimated_ranks, model_name, Product_customer_rank_test)
+        Create_estimatedR_file(calcFinalRank(estimated_ranks), model_name, Product_customer_rank_test)
         sum_of_RMSE += RMSE
 
     print('{}: The average RMSE of the model {} using cross-validation with {} folds is: {}').\
         format((time.asctime(time.localtime(time.time()))), model_name, k, sum_of_RMSE/k)
+
+
+#changes scale of ranks to 0-5, rounds and cast to int in estimated ranks
+def calcFinalRank(estimated_ranks):
+    OldMin = np.nanmin(estimated_ranks[:, 2])
+    OldMax = np.nanmax(estimated_ranks[:, 2])
+    OldRange = (OldMax - OldMin)
+    for obs in estimated_ranks:
+        OldRank = obs[2]
+        NewRank = (((OldRank - OldMin) * 5) / OldRange)
+        Final = int(round(NewRank))
+        obs[2] = Final
+    return estimated_ranks
 
 
 # Create output file
@@ -76,7 +89,7 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_te
                        header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
         return estimated_ranks
     else:
-        return R_avg_train, Bu, Bi
+        return R_avg_train, B_c, B_p
 
 
 # The model calculate r as: a*R_avg + b*Bu+ c*Bi + d*(1 if one of the neighbors has a rank with the user, 0 otherwise)
