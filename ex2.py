@@ -62,8 +62,8 @@ def Create_estimatedR_file(estimated_ranks, model_name,Product_customer_rank_tes
 def base_model(Product_customer_rank_train, Rank_train, Product_customer_test, use_base_model = True, flag = False):
     print('{}: Calculate R average, Bu and Bi').format(time.asctime(time.localtime(time.time())))
     R_avg_train = np.mean(Rank_train)
-    rel_np_train_list, TestCustomers = relTrain(Product_customer_test, Product_customer_rank_train)
-    Bu, Bi = B_pc(rel_np_train_list, TestCustomers, R_avg_train)
+    # rel_np_train_list, TestCustomers = relTrain(Product_customer_test, Product_customer_rank_train, R_avg_train)
+    Bu, Bi = B_pc(Product_customer_rank_test, Product_customer_rank_train, R_avg_train)
     if use_base_model:
         estimated_ranks, estimated_parameters =\
             estimatedRanks(Product_customer_test, R_avg_train, Rank_train, Bu, Bi, d=0)
@@ -91,40 +91,68 @@ def graph_model(Product_customer_train, Rank_train, Product_customer_test, flag 
 
 
 # The following takes the relevant training observations that appears in test
-def relTrain(np_test_list, np_train_list):
-    print('{}: Start run relTrain').format(time.asctime(time.localtime(time.time())))
+# def relTrain(np_test_list, np_train_list):
+#     print('{}: Start run relTrain').format(time.asctime(time.localtime(time.time())))
+#     TestProducts = np_test_list[:,0]
+#     TestProducts = list(set(TestProducts))
+#     TestProductsLen = len(TestProducts)
+#     TestCustomers = np_test_list[:,1]
+#     TestCustomers = list(set(TestCustomers))
+#     TestCustomersLen = len(TestCustomers)
+#     maskP = np.in1d(np_train_list[:, 0], TestProducts)
+#     maskC = np.in1d(np_train_list[:, 1], TestCustomers)
+#     mask = np.logical_or(maskP, maskC)
+#     rel_np_train_list = np_train_list[mask]
+#     return rel_np_train_list, TestCustomers
+
+def B_pc(np_test_list, np_train_list, rAvg):
+    print('{}: Calculate Bu and Bi in B_pc function').format(time.asctime(time.localtime(time.time())))
     TestProducts = np_test_list[:,0]
     TestProducts = list(set(TestProducts))
-    TestProductsLen = len(TestProducts)
     TestCustomers = np_test_list[:,1]
     TestCustomers = list(set(TestCustomers))
-    TestCustomersLen = len(TestCustomers)
     maskP = np.in1d(np_train_list[:, 0], TestProducts)
     maskC = np.in1d(np_train_list[:, 1], TestCustomers)
     mask = np.logical_or(maskP, maskC)
     rel_np_train_list = np_train_list[mask]
-    return rel_np_train_list, TestCustomers
-
-
-# Returns two dictionaries one for products from test and other for customers from test, where values are list that
-# in the second index of the list there is a FLOAT Bp and Bc 
-def B_pc(rel_np_train_list, TestCustomers, rAvg):
-    print('{}: Calculate Bu and Bi in B_pc function').format(time.asctime(time.localtime(time.time())))
-    B_Customers = coll.defaultdict(lambda: [0] * 2)
-    B_Products = coll.defaultdict(lambda: [0] * 2)
-    for obs in rel_np_train_list:
-        if obs[1] in TestCustomers:
-            B_Customers[obs[1]][0] += 1
-            B_Customers[obs[1]][1] += obs[2]
-        else:
-            B_Products[obs[0]][0] += 1
-            B_Products[obs[0]][1] += obs[2]
-    for key in B_Products.keys():
-        B_Products[key][1] = B_Products[key][1]/B_Products[key][0]-rAvg
-    for key in B_Customers.keys():
-        B_Customers[key][1] = B_Customers[key][1]/B_Customers[key][0]-rAvg
+    rel_product_rank = rel_np_train_list[:, [0, 2]]
+    sorted_products, Pidx, Pcnt = np.unique(rel_product_rank[:, 0], return_inverse=True, return_counts=True)
+    average_sorted_products = np.bincount(Pidx, weights=rel_product_rank[:, 1]) / Pcnt
+    rel_customer_rank = rel_np_train_list[:, [1, 2]]
+    sorted_customers, Cidx, Ccnt = np.unique(rel_customer_rank[:, 0], return_inverse=True, return_counts=True)
+    average_sorted_customers = np.bincount(Cidx, weights=rel_customer_rank[:, 1]) / Ccnt
+    B_p = {}
+    B_c = {}
+    i = 0
+    for product in sorted_products:
+        B_p[product] = average_sorted_products[i] - rAvg
+        i += 1
+    i = 0
+    for customer in sorted_customers:
+        B_c[customer] = average_sorted_customers[i] - rAvg
+        i += 1
     print('{}: Finish calculate Bu and Bi in B_pc function').format(time.asctime(time.localtime(time.time())))
-    return B_Products, B_Customers
+    return B_c, B_p
+
+# # Returns two dictionaries one for products from test and other for customers from test, where values are list that
+# # in the second index of the list there is a FLOAT Bp and Bc
+# def B_pc(rel_np_train_list, TestCustomers, rAvg):
+#     print('{}: Calculate Bu and Bi in B_pc function').format(time.asctime(time.localtime(time.time())))
+#     B_Customers = coll.defaultdict(lambda: [0] * 2)
+#     B_Products = coll.defaultdict(lambda: [0] * 2)
+#     for obs in rel_np_train_list:
+#         if obs[1] in TestCustomers:
+#             B_Customers[obs[1]][0] += 1
+#             B_Customers[obs[1]][1] += obs[2]
+#         else:
+#             B_Products[obs[0]][0] += 1
+#             B_Products[obs[0]][1] += obs[2]
+#     for key in B_Products.keys():
+#         B_Products[key][1] = B_Products[key][1]/B_Products[key][0]-rAvg
+#     for key in B_Customers.keys():
+#         B_Customers[key][1] = B_Customers[key][1]/B_Customers[key][0]-rAvg
+#     print('{}: Finish calculate Bu and Bi in B_pc function').format(time.asctime(time.localtime(time.time())))
+#     return B_Products, B_Customers
 
 
 #returns two dictionaries of index in matrix for products and for customers, with the matrix itself initialized with zeros.
@@ -175,11 +203,6 @@ def neighbors_indications(Products_Graph, Product_customer_train, Product_custom
                 Neighbors_indications_dictionary[(product_user[0], product_user[1])] = 1
                 break #one neighbor which the user has ranked it is enough- no need to check all the neighbors
     return Neighbors_indications_dictionary
-
-
-# Calculate for each customer and for each product the Bu and Bi
-def minimizeRMSE_model (Product_customer , Ranks, R_avg):
-    return
 
 
 # Calculate for each Product_customer couple the estimated value for the rank.
