@@ -48,7 +48,7 @@ def Create_estimatedR_file(estimated_ranks, model_name,Product_customer_rank_tes
                header='Product_ID,Customer_ID,Customer_estimated_rank', comments='')
     np.savetxt(model_name + "_" + i + "_realRanks.csv", Product_customer_rank_test, fmt='%s, %s, %s', delimiter=",",
                header='Product_ID,Customer_ID,Customer_real_rank', comments='')
-    
+
 
 # The base model which calculate r as: R_avg + Bu+ Bi
 # Return a dictionary- for each (i,u) the value is the estimated rank
@@ -56,7 +56,8 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_test, u
     R_avg_train = np.mean(Rank_train)
     Bu, Bi = minimizeRMSE_model(Product_customer_rank_train, Rank_train, R_avg_train)
     if use_base_model:
-        estimated_ranks, estimated_parameters = estimatedRanks(Product_customer_test, R_avg_train, Rank_train, Bu, Bi)
+        estimated_ranks, estimated_parameters =\
+            estimatedRanks(Product_customer_test, R_avg_train, Rank_train, Bu, Bi, a=1, b=1, c=1, d=0)
         if flag:
             np.savetxt(model_name + "for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
                        header='product, user, rank, R_avg, Bu, Bi, neighbors_indications', comments='')
@@ -219,10 +220,10 @@ def main():
 ########################################################################################
 
 #######  run the model #################################################################
-    model_name = base_model #choose the model
-    results_matrix = model_name(Product_customer_rank_matrix,
-                                Product_customer_rank_matrix[:,2],
-                                Product_customer_results_matrix)
+    # model_name = base_model #choose the model
+    # results_matrix = model_name(Product_customer_rank_matrix,
+    #                             Product_customer_rank_matrix[:,2],
+    #                             Product_customer_results_matrix)
 #######################################################################################
 
 #######  output file ###################################################################
