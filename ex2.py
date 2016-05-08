@@ -284,15 +284,15 @@ def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_ran
             full_estimated_ranks[(product_user_rank[0], product_user_rank[1])]=\
                 a*R_avg + b*B_p.get(product_user_rank[0]) + c*B_c.get(product_user_rank[1]) +\
                 d*Neighbors_average_rank_dictionary[product_user_rank[0]]
-            estimated_parameters.append([product_user_rank[0], product_user_rank[1], product_user_rank[2], R_avg,
-                                         B_p.get(product_user_rank[0]), B_c.get(product_user_rank[1]),
-                                         Neighbors_average_rank_dictionary[product_user_rank[0]]])
+            # estimated_parameters.append([product_user_rank[0], product_user_rank[1], product_user_rank[2], R_avg,
+            #                              B_p.get(product_user_rank[0]), B_c.get(product_user_rank[1]),
+            #                              Neighbors_average_rank_dictionary[product_user_rank[0]]])
         else:
             full_estimated_ranks[(product, user)] = a*R_avg + b*B_p.get(product_user_rank[0]) + c*B_c.get(product_user_rank[1])
-            estimated_parameters.append([product, user, product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
-                                         B_c.get(product_user_rank[1]), 0])
-    print('{}: Finish insert the estimated rank').format(time.asctime(time.localtime(time.time())))
-    logging.info('{}: Finish insert the estimated rank'.format(time.asctime(time.localtime(time.time()))))
+            # estimated_parameters.append([product, user, product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
+            #                              B_c.get(product_user_rank[1]), 0])
+    # print('{}: Finish insert the estimated rank').format(time.asctime(time.localtime(time.time())))
+    # logging.info('{}: Finish insert the estimated rank'.format(time.asctime(time.localtime(time.time()))))
     estimated_ranks_product_user = full_estimated_ranks.keys()
     estimated_ranks = [full_estimated_ranks.values()]
     estimated_ranks_product_user = np.array(estimated_ranks_product_user, dtype=int)
@@ -323,7 +323,7 @@ def evaluateModel(Product_customer_rank_test, estimated_ranks):
     return RMSE
 
 def main():
-    logging.basicConfig(filename='logfileRegression.log', level=logging.DEBUG)
+    # logging.basicConfig(filename='logfileRegression.log', level=logging.DEBUG)
 ################### read P_C_matrix into numPy matrix ##################################
     with open('P_C_matrix.csv', 'r') as csvfile:
         input_matrix = list(csv.reader(csvfile))
