@@ -340,7 +340,7 @@ def main():
 #######################################################################################
 
 ########################     Cross Validation Part    #################################
-    for model_name in (graph_model, base_model): 
+    for model_name in (graph_model, base_model):
         CrossValidation(Product_customer_rank_matrix, model_name, 3)
 #######################################################################################
 
