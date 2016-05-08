@@ -9,7 +9,6 @@ import time
 import collections as coll
 
 
-
 #cross validation function: reut
 # 1. split the training set to train and validation sets.
 # 2. run the model on the train set
@@ -29,7 +28,7 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
         flag = False
 
     sum_of_RMSE = 0
-    for i in xrange(k-1):
+    for i in xrange(k):
         validation = slices[i]
         if k == 1: #only 1 fold --> the training and the validation set are the same
             training = slices[i]
@@ -48,10 +47,8 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
             np.array([Product_customer_rank_matrix[j,:] for j in training]), \
             np.array([Product_customer_rank_matrix[l,:] for l in validation])
         Rank_train, Rank_test = Product_customer_rank_train[:,2], Product_customer_rank_test[:,2]
-        if i==(k-1):
-            i = k-1
         estimated_ranks, estimated_ranks_product_user =\
-            model_name(Product_customer_rank_train, Rank_train, Product_customer_rank_test, flag)
+            model_name(Product_customer_rank_train, Rank_train, Product_customer_rank_test, flag=flag)
         estimated_ranks = calcFinalRank(estimated_ranks.T)
         final_estimated_ranks = estimated_ranks.astype(np.int)
         final_full_estimated_ranks = np.concatenate((estimated_ranks_product_user, final_estimated_ranks), axis=1)
@@ -109,7 +106,7 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_te
     B_c, B_p = B_pc(Product_customer_rank_test, Product_customer_rank_train, R_avg_train)
     if use_base_model:
         estimated_ranks, estimated_ranks_product_user, estimated_parameters =\
-            estimatedRanks(Product_customer_rank_test, R_avg_train, Rank_train, B_c, B_p, d=0)
+            estimatedRanks(Product_customer_rank_test, R_avg_train, B_c, B_p, d=0)
         if flag:
             write_regression_parameters_to_file('base_model', estimated_parameters)
             # np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
@@ -238,7 +235,7 @@ def neighbors_indications(Products_Graph_dic, Product_customer_train, Product_cu
         product_average_dic[product] = average_sorted_products[j]
         j+= 1
 
-    i = 0
+    # i = 0
     for product_user in Product_customer_test:
         sum_of_average = 0
         neighbors = Products_Graph_dic.get(product_user[0])
@@ -287,15 +284,15 @@ def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_ran
             full_estimated_ranks[(product_user_rank[0], product_user_rank[1])]=\
                 a*R_avg + b*B_p.get(product_user_rank[0]) + c*B_c.get(product_user_rank[1]) +\
                 d*Neighbors_average_rank_dictionary[product_user_rank[0]]
-            # estimated_parameters.append([product_user_rank[0], product_user_rank[1], product_user_rank[2], R_avg,
-            #                              B_p.get(product_user_rank[0]), B_c.get(product_user_rank[1]),
-            #                              Neighbors_average_rank_dictionary[product_user_rank[0]]])
+            estimated_parameters.append([product_user_rank[0], product_user_rank[1], product_user_rank[2], R_avg,
+                                         B_p.get(product_user_rank[0]), B_c.get(product_user_rank[1]),
+                                         Neighbors_average_rank_dictionary[product_user_rank[0]]])
         else:
             full_estimated_ranks[(product, user)] = a*R_avg + b*B_p.get(product_user_rank[0]) + c*B_c.get(product_user_rank[1])
-            # estimated_parameters.append([product, user, product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
-            #                              B_c.get(product_user_rank[1]), 0])
-    # print('{}: Finish insert the estimated rank').format(time.asctime(time.localtime(time.time())))
-    # logging.info('{}: Finish insert the estimated rank'.format(time.asctime(time.localtime(time.time()))))
+            estimated_parameters.append([product, user, product_user_rank[2], R_avg, B_p.get(product_user_rank[0]),
+                                         B_c.get(product_user_rank[1]), 0])
+    print('{}: Finish insert the estimated rank').format(time.asctime(time.localtime(time.time())))
+    logging.info('{}: Finish insert the estimated rank'.format(time.asctime(time.localtime(time.time()))))
     estimated_ranks_product_user = full_estimated_ranks.keys()
     estimated_ranks = [full_estimated_ranks.values()]
     estimated_ranks_product_user = np.array(estimated_ranks_product_user, dtype=int)
