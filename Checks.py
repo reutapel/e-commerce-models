@@ -34,16 +34,20 @@ def main():
     # print(avg)
     # print(unq)
 
-def calcFinalRank(estimated_ranks):
-    OldMin = np.nanmin(estimated_ranks[:, 2])
-    OldMax = np.nanmax(estimated_ranks[:, 2])
-    OldRange = (OldMax - OldMin)
-    for obs in estimated_ranks:
-        OldRank = obs[2]
-        NewRank = (((OldRank - OldMin) * 5) / OldRange)
-        Final = int(round(NewRank))
-        obs[2] = Final
-    return estimated_ranks
+
+    maskP = np.in1d(estimated_ranks[:, 0], np_test_list[:, 0])
+    print(np.logical_not(maskP))
+
+# def calcFinalRank(estimated_ranks):
+#     OldMin = np.nanmin(estimated_ranks[:, 2])
+#     OldMax = np.nanmax(estimated_ranks[:, 2])
+#     OldRange = (OldMax - OldMin)
+#     for obs in estimated_ranks:
+#         OldRank = obs[2]
+#         NewRank = (((OldRank - OldMin) * 5) / OldRange)
+#         Final = int(round(NewRank))
+#         obs[2] = Final
+#     return estimated_ranks
 
 
 

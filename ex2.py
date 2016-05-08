@@ -18,10 +18,10 @@ import logging
 # 2. run the model on the train set
 # 3. validate the model on the validation set
 def CrossValidation(Product_customer_rank_matrix, model_name ,k):
-    print('{}: Start run cross validations on the model: {} with: {} folds'). \
-        format((time.asctime(time.localtime(time.time()))), str(model_name)[10:21], k)
-    logging.info('{}: Start run cross validations on the model: {} with: {} folds'. \
-        format((time.asctime(time.localtime(time.time()))), str(model_name)[10:21], k))
+    # print('{}: Start run cross validations on the model: {} with: {} folds'). \
+    #     format((time.asctime(time.localtime(time.time()))), str(model_name)[10:21], k)
+    # logging.info('{}: Start run cross validations on the model: {} with: {} folds'. \
+    #     format((time.asctime(time.localtime(time.time()))), str(model_name)[10:21], k))
     indexes = [i for i in xrange(len(Product_customer_rank_matrix))]
     random.shuffle(indexes)
 
@@ -340,7 +340,7 @@ def main():
 #######################################################################################
 
 ########################     Cross Validation Part    #################################
-    for model_name in (graph_model, base_model):
+    for model_name in (graph_model, base_model): 
         CrossValidation(Product_customer_rank_matrix, model_name, 3)
 #######################################################################################
 
@@ -350,32 +350,35 @@ def main():
 #######################################################################################
 
 ###################    call the results file as numpy array   #########################
-    # with open('results.csv', 'r') as csvfile:
-    #     input_matrix = list(csv.reader(csvfile))
-    #     i = 0
-    #     for products in input_matrix:  # delete the header of the file
-    #         if products[0] == 'Product_ID':
-    #             del input_matrix[i]
-    #             break
-    #         i += 1
-    #     Product_customer_results_matrix = np.array(input_matrix).astype('int')
-    # csvfile.close()
+    with open('results.csv', 'r') as csvfile:
+        input_matrix = list(csv.reader(csvfile))
+        i = 0
+        for products in input_matrix:  # delete the header of the file
+            if products[0] == 'Product_ID':
+                del input_matrix[i]
+                break
+            i += 1
+        shimi = np.array(input_matrix)
+        Pc_results_matrix = np.asarray(shimi[:, [0,1]], dtype = int)
+        empty_ranks = np.empty([shimi.size/3,1],dtype = int)
+        Product_customer_results_matrix = np.concatenate((Pc_results_matrix, empty_ranks), axis=1)
+    csvfile.close()
 ########################################################################################
 
 #######  run the model #################################################################
-    # model_name = base_model #choose the model
-    # estimated_ranks,  = model_name(Product_customer_rank_matrix,
-    #                             Product_customer_rank_matrix[:,2],
-    #                             Product_customer_results_matrix)
-    # estimated_ranks = calcFinalRank(estimated_ranks.T)
-    # final_estimated_ranks = estimated_ranks.astype(np.int)
-    # results_matrix = np.concatenate((estimated_ranks_product_user, final_estimated_ranks), axis=1)
-    # results_matrix.sort(axis=0)
+    model_name = graph_model #choose the model
+    estimated_ranks, estimated_ranks_product_user = model_name(Product_customer_rank_matrix,
+                                Product_customer_rank_matrix[:,2],
+                                Product_customer_results_matrix)
+    estimated_ranks = calcFinalRank(estimated_ranks.T)
+    final_estimated_ranks = estimated_ranks.astype(np.int)
+    results_matrix = np.concatenate((estimated_ranks_product_user, final_estimated_ranks), axis=1)
+    results_matrix.sort(axis=0)
 #######################################################################################
 
 #######  output file ###################################################################
-    # numpy.savetxt("EX2.csv", results_matrix, fmt='%s, %s, %s', delimiter=",",
-    #               header='Product_ID,Customer_ID,Customer_rank', comments='')
+    np.savetxt("EX2.csv", results_matrix, fmt='%s, %s, %s', delimiter=",",
+                  header='Product_ID,Customer_ID,Customer_rank', comments='')
 #######################################################################################
 
 if __name__ == '__main__':
