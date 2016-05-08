@@ -308,7 +308,7 @@ def evaluateModel(Product_customer_rank_test, estimated_ranks):
     Product_customer_rank_test.sort(axis = 0)
     estimated_ranks.sort(axis = 0)
     # A = Product_customer_rank_test.size/3
-    # C = np.full((A, 1), A)
+    C = np.full((A, 1), A)
     # first_step = np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:, 2])
     # second_step = np.power(first_step,2)
     # third_step = np.divide(second_step, C)
@@ -356,9 +356,13 @@ def main():
 
 #######  run the model #################################################################
     # model_name = base_model #choose the model
-    # results_matrix = model_name(Product_customer_rank_matrix,
+    # estimated_ranks,  = model_name(Product_customer_rank_matrix,
     #                             Product_customer_rank_matrix[:,2],
     #                             Product_customer_results_matrix)
+    # estimated_ranks = calcFinalRank(estimated_ranks.T)
+    # final_estimated_ranks = estimated_ranks.astype(np.int)
+    # results_matrix = np.concatenate((estimated_ranks_product_user, final_estimated_ranks), axis=1)
+    # results_matrix.sort(axis=0)
 #######################################################################################
 
 #######  output file ###################################################################
