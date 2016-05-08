@@ -32,7 +32,7 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
         flag = False
 
     sum_of_RMSE = 0
-    for i in xrange(k):
+    for i in xrange(k-1):
         validation = slices[i]
         if k == 1: #only 1 fold --> the training and the validation set are the same
             training = slices[i]
@@ -51,6 +51,8 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
             np.array([Product_customer_rank_matrix[j,:] for j in training]), \
             np.array([Product_customer_rank_matrix[l,:] for l in validation])
         Rank_train, Rank_test = Product_customer_rank_train[:,2], Product_customer_rank_test[:,2]
+        if i==(k-1):
+            i = k-1
         estimated_ranks, estimated_ranks_product_user =\
             model_name(Product_customer_rank_train, Rank_train, Product_customer_rank_test, flag)
         estimated_ranks = calcFinalRank(estimated_ranks.T)
@@ -258,7 +260,8 @@ def neighbors_indications(Products_Graph_dic, Product_customer_train, Product_cu
 
 # Calculate for each Product_customer couple the estimated value for the rank.
 # Return a numpy array- [product, user, the estimated rank]
-def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_rank_dictionary={}, a=1, b=1, c=1, d=1):
+def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_rank_dictionary={},
+                   a=0.9976187, b=0.3601571, c=0.9441741, d=-0.0024044):
     print('{}: Start estimate the rank based on the model').format(time.asctime(time.localtime(time.time())))
     logging.info('{}: Start estimate the rank based on the model'.format(time.asctime(time.localtime(time.time()))))
     full_estimated_ranks = {}
@@ -307,18 +310,24 @@ def evaluateModel(Product_customer_rank_test, estimated_ranks):
     logging.info('{}: Start evaluate the RMSE'.format(time.asctime(time.localtime(time.time()))))
     Product_customer_rank_test.sort(axis = 0)
     estimated_ranks.sort(axis = 0)
-    # A = Product_customer_rank_test.size/3
-    C = np.full((A, 1), A)
-    # first_step = np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:, 2])
-    # second_step = np.power(first_step,2)
+    np_size = Product_customer_rank_test.size/3.0
+    C = np.full((np_size, 1), np_size)
+    first_step = np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:, 2])
+    second_step = np.power(first_step,2)
+    # second_step = second_step.T
+    # i=0
+    # for obs in second_step:
+    #     second_step[i] = float(obs)/np_size
+    #     i += 1
     # third_step = np.divide(second_step, C)
-    # forth_step = np.sum(third_step)
-    # final = np.sqrt(forth_step)
-    RMSE = np.sqrt(np.sum(np.divide(np.power(np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:, 2]), 2), C)))
+    third_step = np.sum(second_step)
+    forth_step = third_step/np_size
+    RMSE = np.sqrt(forth_step)
+    # RMSE = np.sqrt(np.sum(np.divide(np.power(np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:, 2]), 2), C)))
     return RMSE
 
 def main():
-    logging.basicConfig(filename='logfileRMSEchanged.log', level=logging.DEBUG)
+    logging.basicConfig(filename='logfileRegression.log', level=logging.DEBUG)
 ################### read P_C_matrix into numPy matrix ##################################
     with open('P_C_matrix.csv', 'r') as csvfile:
         input_matrix = list(csv.reader(csvfile))
@@ -334,7 +343,7 @@ def main():
 
 ########################     Cross Validation Part    #################################
     for model_name in (graph_model, base_model):
-        CrossValidation(Product_customer_rank_matrix, model_name, 3)
+        CrossValidation(Product_customer_rank_matrix, model_name, 10)
 #######################################################################################
 
 #############    check the coefficient using multiple regression   ####################
