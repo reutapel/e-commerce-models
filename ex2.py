@@ -32,7 +32,7 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
         flag = False
 
     sum_of_RMSE = 0
-    for i in xrange(k-1):
+    for i in xrange(k):
         validation = slices[i]
         if k == 1: #only 1 fold --> the training and the validation set are the same
             training = slices[i]
@@ -51,10 +51,8 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
             np.array([Product_customer_rank_matrix[j,:] for j in training]), \
             np.array([Product_customer_rank_matrix[l,:] for l in validation])
         Rank_train, Rank_test = Product_customer_rank_train[:,2], Product_customer_rank_test[:,2]
-        if i==(k-1):
-            i = k-1
         estimated_ranks, estimated_ranks_product_user =\
-            model_name(Product_customer_rank_train, Rank_train, Product_customer_rank_test, flag)
+            model_name(Product_customer_rank_train, Rank_train, Product_customer_rank_test, flag=flag)
         estimated_ranks = calcFinalRank(estimated_ranks.T)
         final_estimated_ranks = estimated_ranks.astype(np.int)
         final_full_estimated_ranks = np.concatenate((estimated_ranks_product_user, final_estimated_ranks), axis=1)
@@ -112,7 +110,7 @@ def base_model(Product_customer_rank_train, Rank_train, Product_customer_rank_te
     B_c, B_p = B_pc(Product_customer_rank_test, Product_customer_rank_train, R_avg_train)
     if use_base_model:
         estimated_ranks, estimated_ranks_product_user, estimated_parameters =\
-            estimatedRanks(Product_customer_rank_test, R_avg_train, Rank_train, B_c, B_p, d=0)
+            estimatedRanks(Product_customer_rank_test, R_avg_train, B_c, B_p, d=0)
         if flag:
             write_regression_parameters_to_file('base_model', estimated_parameters)
             # np.savetxt(model_name + "_for_regression_check.csv", estimated_parameters, fmt='%s, %s, %s', delimiter=",",
@@ -342,21 +340,22 @@ def main():
 #######################################################################################
 
 ########################     Cross Validation Part    #################################
-    for model_name in (graph_model, base_model):
-        CrossValidation(Product_customer_rank_matrix, model_name, 10)
+    for model_name in (graph_model, base_model): 
+        CrossValidation(Product_customer_rank_matrix, model_name, 3)
 #######################################################################################
 
 #############    check the coefficient using multiple regression   ####################
-    # CrossValidation(Product_customer_rank_matrix, graph_model, 1)
+    CrossValidation(Product_customer_rank_matrix, graph_model, 1)
+    CrossValidation(Product_customer_rank_matrix, base_model, 1)
 #######################################################################################
 
 ###################    call the results file as numpy array   #########################
     # with open('results.csv', 'r') as csvfile:
     #     input_matrix = list(csv.reader(csvfile))
     #     i = 0
-    #     for products in matrix:  # delete the header of the file
+    #     for products in input_matrix:  # delete the header of the file
     #         if products[0] == 'Product_ID':
-    #             del matrix[i]
+    #             del input_matrix[i]
     #             break
     #         i += 1
     #     Product_customer_results_matrix = np.array(input_matrix).astype('int')
