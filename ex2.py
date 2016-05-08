@@ -56,7 +56,9 @@ def CrossValidation(Product_customer_rank_matrix, model_name ,k):
         estimated_ranks = calcFinalRank(estimated_ranks.T)
         final_estimated_ranks = estimated_ranks.astype(np.int)
         final_full_estimated_ranks = np.concatenate((estimated_ranks_product_user, final_estimated_ranks), axis=1)
-        # rTilda = np.subtract(Product_customer_rank_test[:,2], final_full_estimated_ranks[:,2])
+        final_full_estimated_ranks.sort(axis = 0)
+        Product_customer_rank_test.sort(axis = 0)
+        rTilda = np.subtract(Product_customer_rank_test[:,2], final_full_estimated_ranks[:,2])
         RMSE = evaluateModel(Product_customer_rank_test, final_full_estimated_ranks)
         print('{}: The RMSE of the model {} for iteration {} is: {}').\
             format((time.asctime(time.localtime(time.time()))), model_name, i, RMSE)
@@ -82,7 +84,7 @@ def calcFinalRank(estimated_ranks):
     i = 0
     for obs in estimated_ranks:
         OldRank = obs
-        NewRank = (((OldRank - OldMin) * 5) / OldRange) #change - if the old range is 0 --> it doesnt good!
+        NewRank = (((OldRank - OldMin) * 5) / OldRange)
         Final = int(round(NewRank))
         estimated_ranks[i] = Final
         i += 1
@@ -96,7 +98,6 @@ def Create_estimatedR_file(full_estimated_ranks, model_name,Product_customer_ran
                header='Product_ID,Customer_ID,Customer_estimated_rank', comments='')
     np.savetxt(str(model_name) + "_" + str(i) + "_realRanks.csv", Product_customer_rank_test, fmt='%s, %s, %s', delimiter=",",
                header='Product_ID,Customer_ID,Customer_real_rank', comments='')
-
 
 
 # The base model which calculate r as: R_avg + Bu+ Bi
@@ -304,10 +305,20 @@ def estimatedRanks(Product_customer_test, R_avg, B_c, B_p, Neighbors_average_ran
 def evaluateModel(Product_customer_rank_test, estimated_ranks):
     print('{}: Start evaluate the RMSE').format(time.asctime(time.localtime(time.time())))
     logging.info('{}: Start evaluate the RMSE'.format(time.asctime(time.localtime(time.time()))))
-    return np.sum(np.power(np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:, 2]), 2))
+    Product_customer_rank_test.sort(axis = 0)
+    estimated_ranks.sort(axis = 0)
+    # A = Product_customer_rank_test.size/3
+    # C = np.full((A, 1), A)
+    # first_step = np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:, 2])
+    # second_step = np.power(first_step,2)
+    # third_step = np.divide(second_step, C)
+    # forth_step = np.sum(third_step)
+    # final = np.sqrt(forth_step)
+    RMSE = np.sqrt(np.sum(np.divide(np.power(np.subtract(estimated_ranks[:,2], Product_customer_rank_test[:, 2]), 2), C)))
+    return RMSE
 
 def main():
-    logging.basicConfig(filename='logfilecrossten.log', level=logging.DEBUG)
+    logging.basicConfig(filename='logfileRMSEchanged.log', level=logging.DEBUG)
 ################### read P_C_matrix into numPy matrix ##################################
     with open('P_C_matrix.csv', 'r') as csvfile:
         input_matrix = list(csv.reader(csvfile))
@@ -323,7 +334,7 @@ def main():
 
 ########################     Cross Validation Part    #################################
     for model_name in (graph_model, base_model):
-        CrossValidation(Product_customer_rank_matrix, model_name, 10)
+        CrossValidation(Product_customer_rank_matrix, model_name, 3)
 #######################################################################################
 
 #############    check the coefficient using multiple regression   ####################
